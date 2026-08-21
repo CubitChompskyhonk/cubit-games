@@ -156,7 +156,7 @@
 </head>
 <body>
   <header>
-    <span>Under the Glow · v0.6</span>
+    <span>Under the Glow · v0.7</span>
     <span id="score">0</span>
   </header>
   <div id="view">
@@ -284,6 +284,12 @@
   let roomId = 'tv', px = 50, py = 72;
   let inv = [], hp = 3, score = 0, moves = 0, dead = false, ended = false;
   let flags = { seen: false, marked: false, named: false };
+  let hallStretch = 0;
+  let mercyLeft = 1;
+  let hideCount = 0;
+  let fightCount = 0;
+  let deathCount = 0;
+  let examineMemory = {};
 
   const logEl = document.getElementById('log');
   const artEl = document.getElementById('scene-art');
@@ -460,11 +466,15 @@
     fmv.querySelector('.line').textContent = reason + ' The reel always ends at the TV.';
     fmv.classList.add('show');
     dead = true;
+    deathCount++;
+    examineMemory.remote = 'The remote remembers your thumb from a previous glow.';
+    examineMemory.sock = 'The sock is warm with someone else\'s wait.';
+    examineMemory.letter = 'The letter already tried to be your name once.';
     setTimeout(() => {
       fmv.classList.remove('show');
       setMusicPattern('normal');
       dead = false; inv = []; hp = 3; ended = false;
-      flags = { seen: false, marked: false, named: false };
+      flags = { seen: false, marked: false, named: false }; hallStretch = 0; mercyLeft = 1; hideCount = 0; fightCount = 0;
       enter('tv');
       say('You are under the glow again. Static paints your hands.', 'sys');
     }, 5000);
@@ -508,13 +518,22 @@
   }
 
   function tryExit(dir) {
-    // map down/up words
-    if (dir === 'd' || dir === 'down') dir = 's'; // handled via room exits keys
+    if (dir === 'd' || dir === 'down') dir = 'd';
     const r = ROOMS[roomId];
     let next = r.exits[dir];
-    if (!next && (dir === 'down' || dir === 'd')) next = r.exits.d || r.exits.s;
+    if (!next && (dir === 'down' || dir === 'd')) next = r.exits.d;
     if (!next && (dir === 'up' || dir === 'u')) next = r.exits.u || r.exits.n;
     if (!next) { say('Only wall, and the idea of wall.'); return; }
+    // Non-Euclidean: hall east stretches once
+    if (roomId === 'hall' && dir === 'e' && next === 'mirror') {
+      if (hallStretch < 1) {
+        hallStretch++;
+        say('You walk east. The hall declines to become another room. You are still in the middle.', 'sys');
+        resetDwell();
+        render();
+        return;
+      }
+    }
     if (next === 'yard' && roomId === 'hall' && !flags.marked) {
       say('The yard door will not admit you yet. Something unfinished clings.', 'sys');
       return;
@@ -523,6 +542,7 @@
       say('The dark stair refuses until something has seen you.', 'sys');
       return;
     }
+    if (roomId === 'hall' && dir === 'e') hallStretch = 0;
     enter(next, dir);
   }
 
@@ -560,18 +580,30 @@
 
     if (s === 'fight' || s === 'flee' || s === 'hide' || s === 'run') {
       if (!danger) say('Nothing to fight or flee. The glow is steady.');
-      else if (s === 'hide') { endDanger('You fold into the furniture. The entity passes.'); addScore(8); }
+      else if (s === 'hide') {
+        hideCount++;
+        if (mercyLeft > 0) {
+          mercyLeft--;
+          endDanger('You fold into the furniture. The house allows it — once.');
+          addScore(8);
+        } else if (Math.random() < 0.45) {
+          endDanger('You hide. Barely. Something sniffs the gap.');
+          addScore(4);
+        } else {
+          playDeathFMV('The furniture was already full.');
+        }
+      }
       else if (s === 'flee' || s === 'run') {
         endDanger('You take a door without choosing it.');
         const dirs = Object.keys(ROOMS[roomId].exits);
         tryExit(dirs[Math.floor(Math.random() * dirs.length)] || 'e');
         addScore(5);
       } else if (s === 'fight') {
-        if (Math.random() < 0.35) { endDanger('You swing. It is surprised.'); addScore(12); }
+        fightCount++; if (Math.random() < 0.35) { endDanger('You swing. It is surprised.'); addScore(12); }
         else playDeathFMV('You fight. The entity is not fair.');
       }
     } else if (s === 'help') {
-      say('Move N/W/S/E. Type: look, listen, map, take, use, talk, examine, inventory, open, read, hide, fight, flee, status. When music shifts: fight, flee, or hide. Deaths return you to the TV glow. This game is built to scare without pictures.');
+      say('Move N/W/S/E. Type: look, listen, map, take, use, talk, examine, inventory, open, read, hide, fight, flee, status. When music shifts: fight, flee, or hide. Deaths return you to the TV glow. Scare without pictures. Hall may stretch. One true hide per run. Deaths remember.');
     } else if (s === 'map') {
       say('TV glow —east→ Hall —east→ Mirror; Hall north→ Kitchen; Hall south→ Yard (marked); Hall down→ Basement (seen); TV north→ Bedroom.');
     } else if (s === 'status') {
@@ -616,13 +648,17 @@
       else if (roomId === 'mirror' && !has('fog letter')) { inv.push('fog letter'); flags.marked = true; addScore(15); say('A letter from the fog sticks to your thumb.', 'ok'); }
       else if (roomId === 'yard' && !has('collar tag')) { inv.push('collar tag'); addScore(10); say('A tag with the name scratched out.', 'ok'); }
       else if (roomId === 'basement' && !has('wet key')) { inv.push('wet key'); addScore(12); say('A key that should not be wet this far inland.', 'ok'); }
+      else if (deathCount > 0 && Math.random() < 0.15) say('You already took that. (Did you?)', 'sys');
       else say('Nothing else offers itself.');
     } else if (s.startsWith('examine') || s.startsWith('look at') || s.startsWith('inspect')) {
       const t = s.replace(/^(examine|look at|inspect)\s+/, '');
-      if (t.includes('remote') && has('remote')) say('Buttons worn smooth. Channel 03 is the only one that dents.');
-      else if (t.includes('sock') && has('lost sock')) say('Warmth without a foot.');
+      if (t.includes('remote') && has('remote')) {
+        if (examineMemory.remote) say(examineMemory.remote);
+        else say('Buttons worn smooth. Channel 03 is the only one that dents.');
+      }
+      else if (t.includes('sock') && has('lost sock')) say(examineMemory.sock || 'Warmth without a foot.');
       else if (t.includes('label') && has('wrong label')) say('Friendly font. Unfriendly options.');
-      else if ((t.includes('letter') || t.includes('fog')) && has('fog letter')) say('Not a word yet. A demand for a mouth.');
+      else if ((t.includes('letter') || t.includes('fog')) && has('fog letter')) say(examineMemory.letter || 'Not a word yet. A demand for a mouth.');
       else if (t.includes('tag') && has('collar tag')) say('Removed carefully. Love or fear.');
       else if (t.includes('key') && has('wet key')) say('Fits a door you have not found — or one you already left.');
       else if (t.includes('tv') || t.includes('static') || t.includes('glow')) say('The glow is a mouth that only knows static.');
@@ -670,7 +706,13 @@
     if (!ended && flags.seen && flags.marked && flags.named) {
       ended = true;
       say('You are seen, marked, and named.', 'ok');
-      say('ENDING — The static thins. For a moment the TV shows a living room with the lights on.', 'ok'); say('Then only carpet. For now.', 'ok');
+      if (hideCount > fightCount && hideCount > 0) {
+        say('ENDING B — STILL GLOWING: You hid more than you faced. The static keeps a place for you.', 'ok');
+        say('You wake under the glow on purpose. The house does not argue.', 'ok');
+      } else {
+        say('ENDING A — CARPET: The static thins. A living room with the lights on — for a frame.', 'ok');
+        say('Then only carpet. For now.', 'ok');
+      }
       addScore(50);
     }
     render();
@@ -710,7 +752,7 @@
     document.body.removeEventListener('touchstart', once);
   }, { passive: true });
 
-  say('Under the Glow v0.6 — deaths return to the TV.', 'sys');
+  say('Under the Glow v0.7 — deaths return to the TV.', 'sys');
   if (isFounder) say('FOUNDER RELEASE — pay waived. Tap the blue sound bar if silent.', 'ok');
   else say('Tap the sound bar, then type help.', 'sys');
   render();
