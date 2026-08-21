@@ -1,0 +1,687 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <title>Under the Glow</title>
+  <meta name="theme-color" content="#07060b" />
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&display=swap');
+    :root {
+      --bg: #07060b; --ink: #e4dcd2; --mute: #6e6878; --bad: #d06070; --ok: #7a9e82;
+      --line: #1e1a28; --accent: #9b8cff; --tv: #7ec8ff;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg); color: var(--ink);
+      font-family: "Libre Baskerville", Georgia, serif;
+      height: 100dvh; display: flex; flex-direction: column; overflow: hidden;
+    }
+    header {
+      padding: 8px 12px; border-bottom: 1px solid var(--line);
+      font-family: "IBM Plex Mono", monospace; font-size: 10px;
+      letter-spacing: 0.18em; text-transform: uppercase; color: var(--mute);
+      display: flex; justify-content: space-between; flex-shrink: 0;
+    }
+    #score { color: var(--accent); }
+    #view {
+      position: relative; height: 38dvh; min-height: 190px; flex-shrink: 0;
+      overflow: hidden; border-bottom: 1px solid var(--line);
+    }
+    #backdrop { position: absolute; inset: 0; background-size: cover; background-position: center; transition: background 0.5s ease; }
+    #dust, #grain, #vignette { position: absolute; inset: 0; pointer-events: none; }
+    #dust {
+      z-index: 3; opacity: 0.75;
+      background-image:
+        radial-gradient(1px 1px at 10% 20%, rgba(255,255,255,0.2), transparent),
+        radial-gradient(1px 1px at 70% 40%, rgba(255,255,255,0.1), transparent),
+        radial-gradient(1px 1px at 40% 80%, rgba(120,200,255,0.12), transparent);
+      animation: drift 14s linear infinite;
+    }
+    @keyframes drift { to { transform: translateY(-18px); } }
+    #grain {
+      z-index: 4; opacity: 0.07;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    }
+    #vignette {
+      z-index: 2;
+      background: radial-gradient(ellipse at center, transparent 25%, rgba(0,0,0,0.78) 100%);
+    }
+    #room-label {
+      position: absolute; top: 8px; left: 10px; z-index: 6;
+      font-family: "IBM Plex Mono", monospace; font-size: 10px;
+      letter-spacing: 0.12em; color: var(--mute);
+    }
+    #scene-art {
+      position: absolute; left: 50%; top: 46%; transform: translate(-50%, -50%);
+      z-index: 1; font-family: "IBM Plex Mono", monospace; font-size: 10px;
+      line-height: 1.2; color: rgba(170,160,190,0.48); white-space: pre;
+      text-align: center; pointer-events: none;
+    }
+    #view.tv-room #scene-art { color: rgba(140,200,255,0.55); text-shadow: 0 0 12px rgba(80,160,255,0.35); }
+    #player {
+      position: absolute; width: 16px; height: 26px;
+      margin-left: -8px; margin-top: -26px; z-index: 4;
+      transition: left 0.1s linear, top 0.1s linear;
+    }
+    #player .body {
+      width: 100%; height: 100%;
+      background: linear-gradient(180deg, #e0d0bc, #4a3e34);
+      border-radius: 5px 5px 3px 3px;
+      box-shadow: 0 0 0 1px rgba(0,0,0,0.5), 0 4px 12px rgba(0,0,0,0.4);
+      position: relative;
+    }
+    #player .body::before {
+      content: ""; position: absolute; top: 5px; left: 3px; right: 3px; height: 7px;
+      background: #1a1512; border-radius: 2px;
+    }
+    .exit-hint {
+      position: absolute; z-index: 4; font-family: "IBM Plex Mono", monospace;
+      font-size: 9px; color: rgba(140,130,170,0.4); letter-spacing: 0.15em;
+    }
+    #log {
+      flex: 1; overflow-y: auto; padding: 10px 12px; font-size: 14px; line-height: 1.5;
+      -webkit-overflow-scrolling: touch; min-height: 0;
+    }
+    #log div { margin-bottom: 7px; animation: fadein 0.2s ease; }
+    @keyframes fadein { from { opacity: 0; transform: translateY(3px); } to { opacity: 1; } }
+    #log .sys { color: var(--mute); font-size: 12px; font-family: "IBM Plex Mono", monospace; }
+    #log .bad { color: var(--bad); }
+    #log .ok { color: var(--ok); }
+    #log .you { color: #a89888; font-style: italic; }
+    .inv {
+      padding: 5px 12px; font-size: 11px; font-family: "IBM Plex Mono", monospace;
+      color: var(--mute); border-top: 1px solid var(--line); flex-shrink: 0;
+    }
+    .founder {
+      font-size: 10px; font-family: "IBM Plex Mono", monospace; color: var(--ok);
+      padding: 0 12px 4px; flex-shrink: 0;
+    }
+    #audio-unlock {
+      display: none; flex-shrink: 0; margin: 0 12px 6px; padding: 10px;
+      border: 1px solid #3a5080; border-radius: 8px; background: #101828;
+      font-family: "IBM Plex Mono", monospace; font-size: 12px; color: var(--tv);
+      text-align: center; cursor: pointer;
+    }
+    #audio-unlock.show { display: block; }
+    .pad {
+      display: grid; grid-template-columns: 44px 44px 44px; grid-template-rows: 34px 34px;
+      gap: 5px; padding: 6px 10px 4px; justify-content: center; flex-shrink: 0;
+    }
+    .pad button {
+      background: #141022; border: 1px solid #2a2440; color: var(--mute);
+      border-radius: 6px; font-family: "IBM Plex Mono", monospace; font-size: 11px;
+    }
+    .pad .blank { visibility: hidden; }
+    .bar {
+      display: flex; gap: 8px; padding: 8px 10px calc(10px + env(safe-area-inset-bottom));
+      border-top: 1px solid var(--line); flex-shrink: 0; background: #0a0810;
+    }
+    #cmd {
+      flex: 1; background: #100e18; border: 1px solid #2a2440; color: var(--ink);
+      padding: 12px; font-size: 16px; border-radius: 6px; font-family: Georgia, serif; outline: none;
+    }
+    #go {
+      background: #1a1630; border: 1px solid #3a3460; color: var(--ink);
+      padding: 0 14px; border-radius: 6px; font-family: "IBM Plex Mono", monospace; font-size: 12px;
+    }
+    #fmv {
+      display: none; position: fixed; inset: 0; z-index: 200;
+      background: #000; color: #e4dcd2; flex-direction: column;
+      align-items: center; justify-content: center;
+      font-family: "IBM Plex Mono", monospace;
+    }
+    #fmv.show { display: flex; }
+    #fmv .frame {
+      width: min(92vw, 420px); aspect-ratio: 4/3;
+      border: 2px solid #3a3450; background: #0a0810;
+      display: flex; align-items: center; justify-content: center;
+      flex-direction: column; padding: 16px; text-align: center;
+      box-shadow: 0 0 40px rgba(180,40,60,0.25);
+      animation: fmvPulse 0.8s ease infinite alternate;
+    }
+    @keyframes fmvPulse { from { filter: brightness(0.85); } to { filter: brightness(1.1); } }
+    #fmv .title { color: #d06070; font-size: 13px; letter-spacing: 0.2em; margin-bottom: 12px; }
+    #fmv .art { white-space: pre; font-size: 11px; line-height: 1.2; color: #8a8098; margin-bottom: 12px; }
+    #fmv .line { font-size: 13px; line-height: 1.5; max-width: 32ch; }
+    #danger-bar {
+      display: none; flex-shrink: 0; padding: 6px 12px;
+      background: #1a0810; border-top: 1px solid #5a2030;
+      font-family: "IBM Plex Mono", monospace; font-size: 11px; color: #d06070;
+      letter-spacing: 0.08em;
+    }
+    #danger-bar.on { display: block; animation: blink 0.5s step-end infinite; }
+    @keyframes blink { 50% { opacity: 0.4; } }
+  </style>
+</head>
+<body>
+  <header>
+    <span>Under the Glow · v0.5</span>
+    <span id="score">0</span>
+  </header>
+  <div id="view">
+    <div id="backdrop"></div>
+    <div id="dust"></div>
+    <div id="grain"></div>
+    <div id="vignette"></div>
+    <div id="room-label"></div>
+    <div id="scene-art"></div>
+    <div id="player"><div class="body"></div></div>
+    <div class="exit-hint" id="hint-n" style="top:8px;left:50%;transform:translateX(-50%)"></div>
+    <div class="exit-hint" id="hint-s" style="bottom:8px;left:50%;transform:translateX(-50%)"></div>
+    <div class="exit-hint" id="hint-w" style="left:8px;top:50%"></div>
+    <div class="exit-hint" id="hint-e" style="right:8px;top:50%"></div>
+  </div>
+  <div id="fmv"><div class="frame"><div class="title"></div><div class="art"></div><div class="line"></div></div></div>
+  <div id="danger-bar">MUSIC SHIFT — FIGHT / FLEE / HIDE</div>
+  <div class="founder" id="founder"></div>
+  <div id="audio-unlock" class="show">TAP HERE TO START THE GLOW (sound on)</div>
+  <div class="inv" id="inv">Carrying: nothing</div>
+  <div id="log"></div>
+  <div class="pad">
+    <button class="blank"></button>
+    <button type="button" data-dir="n">N</button>
+    <button class="blank"></button>
+    <button type="button" data-dir="w">W</button>
+    <button type="button" data-dir="s">S</button>
+    <button type="button" data-dir="e">E</button>
+  </div>
+  <div class="bar">
+    <input id="cmd" placeholder="What do you do?" autocomplete="off" enterkeyhint="done" />
+    <button type="button" id="go">Do</button>
+  </div>
+  <script>
+(function () {
+  const params = new URLSearchParams(location.search);
+  const isFounder = params.get('access') === 'founder' || localStorage.getItem('utg_founder') === '1';
+  if (params.get('access') === 'founder') localStorage.setItem('utg_founder', '1');
+  let unlocked = isFounder || localStorage.getItem('utg_unlocked') === '1' || params.get('paid') === '1';
+  if (params.get('paid') === '1') localStorage.setItem('utg_unlocked', '1');
+
+  const ART = { tv: null, hall: null, mirror: null, kitchen: null, yard: null, basement: null, bedroom: null };
+
+  const ROOMS = {
+    tv: {
+      name: 'Under the Glow',
+      art:
+`  ╭────────────╮
+  │ ▓░▓░▓▓░▓░▓ │
+  │ ░▓▓░ STATIC│
+  │ ▓░▓░▓▓░▓░▓ │
+  ╰─────┬──────╯
+     the only light`,
+      bg: 'radial-gradient(ellipse at 50% 40%, #1a3050 0%, #0a1020 40%, #050608 100%)',
+      exits: { e: 'hall', n: 'bedroom' },
+      desc: 'A dead channel that still breathes. Blue-white static paints the carpet. Everything important happens in this light.'
+    },
+    hall: {
+      name: 'The Hall That Lengthens',
+      art:
+`│     │
+│        │
+│           │
+│              ░
+  do not look back`,
+      bg: 'linear-gradient(95deg, #08060e 0%, #1a1428 40%, #0a0814 100%)',
+      exits: { w: 'tv', e: 'mirror', n: 'kitchen', s: 'yard', d: 'basement' },
+      desc: 'Wallpaper breathes on a delay. The far end recedes when watched. A darker stair suggests itself.'
+    },
+    mirror: {
+      name: 'Bathroom Mirror',
+      art:
+` ┌────────────┐
+ │  fog writes │
+ │   first     │
+ └────────────┘`,
+      bg: 'radial-gradient(ellipse at 50% 35%, #2a3040 0%, #0c1018 55%, #06080e 100%)',
+      exits: { w: 'hall' },
+      desc: 'Condensation forms letters before your breath does. Tiles warmer than skin.'
+    },
+    kitchen: {
+      name: 'Kitchen at 3:17',
+      art:
+`   (◉) stove-eye
+  ≈≈≈≈≈≈≈≈≈≈≈≈
+     3:17`,
+      bg: 'radial-gradient(ellipse at 25% 55%, #3a1818 0%, #0c0a10 55%, #060508 100%)',
+      exits: { s: 'hall' },
+      desc: 'Labels are dares. The clock loves 3:17. The hum competes with the TV in the other room.'
+    },
+    yard: {
+      name: 'Yard with the Wrong Dog',
+      art:
+`  ·   ·   ·
+ ╱ fence ╲
+   wag ?`,
+      bg: 'radial-gradient(ellipse at 50% 100%, #0a1a14 0%, #080a0c 50%, #050608 100%)',
+      exits: { n: 'hall' },
+      desc: 'Night lawn. A shape is eager. Names are sharp tools here.'
+    },
+    basement: {
+      name: 'Basement Stairs',
+      art:
+`  ╲  dark  ╱
+   ╲      ╱
+    ╲ !! ╱
+   water talk`,
+      bg: 'radial-gradient(ellipse at 50% 100%, #101018 0%, #06050a 60%, #020203 100%)',
+      exits: { u: 'hall', w: 'tv' },
+      desc: 'Cold climbs. Something below answers the static with a delay. You should not understand it.'
+    },
+    bedroom: {
+      name: 'Bedroom Without a Bed',
+      art:
+`  empty frame
+  ·  ·  ·  ·
+  closet breath
+  slightly open`,
+      bg: 'radial-gradient(ellipse at 60% 30%, #1a1220 0%, #0a0810 55%, #050408 100%)',
+      exits: { s: 'tv' },
+      desc: 'The mattress is gone. The closet does not close all the way. Dust holds the shape of sleep.'
+    }
+  };
+
+  let roomId = 'tv', px = 50, py = 72;
+  let inv = [], hp = 3, score = 0, moves = 0, dead = false, ended = false;
+  let flags = { seen: false, marked: false, named: false };
+
+  const logEl = document.getElementById('log');
+  const artEl = document.getElementById('scene-art');
+  const labelEl = document.getElementById('room-label');
+  const invEl = document.getElementById('inv');
+  const playerEl = document.getElementById('player');
+  const scoreEl = document.getElementById('score');
+  const backdrop = document.getElementById('backdrop');
+  const viewEl = document.getElementById('view');
+  const cmd = document.getElementById('cmd');
+  const unlockBtn = document.getElementById('audio-unlock');
+
+  let audioCtx = null, osc = null, gain = null, lfo = null, noise = null, noiseGain = null;
+  let danger = false, dangerTimer = null, entityTimer = null, musicStarted = false;
+
+  function say(t, cls) {
+    const d = document.createElement('div');
+    if (cls) d.className = cls;
+    d.textContent = t;
+    logEl.appendChild(d);
+    while (logEl.children.length > 50) logEl.removeChild(logEl.firstChild);
+    logEl.scrollTop = logEl.scrollHeight;
+  }
+  function addScore(n) { score += n; scoreEl.textContent = String(score); }
+  function has(i) { return inv.includes(i); }
+
+  function ensureAudio() {
+    try {
+      if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        gain = audioCtx.createGain();
+        gain.gain.value = 0.05;
+        gain.connect(audioCtx.destination);
+
+        // soft noise bed (static)
+        const bufSize = audioCtx.sampleRate * 2;
+        const buf = audioCtx.createBuffer(1, bufSize, audioCtx.sampleRate);
+        const data = buf.getChannelData(0);
+        for (let i = 0; i < bufSize; i++) data[i] = (Math.random() * 2 - 1) * 0.15;
+        noise = audioCtx.createBufferSource();
+        noise.buffer = buf;
+        noise.loop = true;
+        noiseGain = audioCtx.createGain();
+        noiseGain.gain.value = 0.02;
+        noise.connect(noiseGain);
+        noiseGain.connect(gain);
+        noise.start();
+
+        osc = audioCtx.createOscillator();
+        osc.type = 'square';
+        osc.frequency.value = 110;
+        lfo = audioCtx.createOscillator();
+        lfo.type = 'square';
+        lfo.frequency.value = 2.2;
+        const lfoGain = audioCtx.createGain();
+        lfoGain.gain.value = 5;
+        lfo.connect(lfoGain);
+        lfoGain.connect(osc.frequency);
+        osc.connect(gain);
+        osc.start();
+        lfo.start();
+        musicStarted = true;
+      }
+      if (audioCtx.state === 'suspended') {
+        audioCtx.resume();
+      }
+      unlockBtn.classList.remove('show');
+      unlockBtn.textContent = 'SOUND ON';
+      return true;
+    } catch (e) {
+      say('Audio blocked by the device. Check silent switch / site permissions.', 'bad');
+      return false;
+    }
+  }
+
+  function setMusicPattern(mode) {
+    if (!osc || !audioCtx) return;
+    const t = audioCtx.currentTime;
+    if (mode === 'normal') {
+      osc.type = 'square';
+      osc.frequency.setValueAtTime(110, t);
+      lfo.frequency.setValueAtTime(2.2, t);
+      if (gain) gain.gain.setValueAtTime(0.05, t);
+      if (noiseGain) noiseGain.gain.setValueAtTime(0.02, t);
+    } else if (mode === 'danger') {
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(176, t);
+      lfo.frequency.setValueAtTime(8, t);
+      if (gain) gain.gain.setValueAtTime(0.07, t);
+      if (noiseGain) noiseGain.gain.setValueAtTime(0.04, t);
+    } else if (mode === 'death') {
+      osc.frequency.setValueAtTime(48, t);
+      lfo.frequency.setValueAtTime(1, t);
+      if (gain) gain.gain.setValueAtTime(0.09, t);
+    }
+  }
+
+  function startDanger() {
+    if (danger || dead || ended) return;
+    if (!musicStarted) return;
+    danger = true;
+    setMusicPattern('danger');
+    document.getElementById('danger-bar').classList.add('on');
+    say('The tune warps. Something uses the doorway.', 'bad');
+    say('FIGHT · FLEE · HIDE', 'sys');
+    clearTimeout(entityTimer);
+    entityTimer = setTimeout(() => {
+      if (danger) playDeathFMV('The entity enters while you hesitate.');
+    }, 4500);
+  }
+
+  function endDanger(msg) {
+    danger = false;
+    clearTimeout(entityTimer);
+    setMusicPattern('normal');
+    document.getElementById('danger-bar').classList.remove('on');
+    if (msg) say(msg, 'ok');
+  }
+
+  function scheduleDanger() {
+    clearTimeout(dangerTimer);
+    dangerTimer = setTimeout(() => {
+      startDanger();
+      scheduleDanger();
+    }, 16000 + Math.random() * 22000);
+  }
+
+  function playDeathFMV(reason) {
+    danger = false;
+    clearTimeout(entityTimer);
+    document.getElementById('danger-bar').classList.remove('on');
+    setMusicPattern('death');
+    const fmv = document.getElementById('fmv');
+    fmv.querySelector('.title').textContent = 'DEATH · 5 SECONDS';
+    fmv.querySelector('.art').textContent =
+`  ╭──────────╮
+  │ ▓░▓░▓▓░▓ │
+  │  STATIC  │
+  ╰──────────╯
+   back to the glow`;
+    fmv.querySelector('.line').textContent = reason + ' The reel always ends at the TV.';
+    fmv.classList.add('show');
+    dead = true;
+    setTimeout(() => {
+      fmv.classList.remove('show');
+      setMusicPattern('normal');
+      dead = false; inv = []; hp = 3; ended = false;
+      flags = { seen: false, marked: false, named: false };
+      enter('tv');
+      say('You are under the glow again. Static paints your hands.', 'sys');
+    }, 5000);
+  }
+
+  function die(msg) { playDeathFMV(msg); }
+
+  function render() {
+    const r = ROOMS[roomId];
+    labelEl.textContent = r.name;
+    artEl.textContent = r.art;
+    const artUrl = ART[roomId];
+    if (artUrl) {
+      backdrop.style.backgroundImage = 'url(' + artUrl + ')';
+      viewEl.classList.add('has-art');
+    } else {
+      backdrop.style.backgroundImage = 'none';
+      backdrop.style.background = r.bg;
+      viewEl.classList.remove('has-art');
+    }
+    viewEl.classList.toggle('tv-room', roomId === 'tv');
+    invEl.textContent = 'Carrying: ' + (inv.length ? inv.join(', ') : 'nothing');
+    playerEl.style.left = px + '%';
+    playerEl.style.top = py + '%';
+    document.getElementById('founder').textContent = isFounder ? 'FOUNDER RELEASE · pay waived · playtest' : '';
+    ['n','s','e','w'].forEach(d => {
+      document.getElementById('hint-' + d).textContent = r.exits[d] ? d.toUpperCase() : '';
+    });
+  }
+
+  function enter(id, via) {
+    roomId = id;
+    if (via === 'e') { px = 16; py = 72; }
+    else if (via === 'w') { px = 84; py = 72; }
+    else if (via === 'n') { px = 50; py = 80; }
+    else if (via === 's') { px = 50; py = 26; }
+    else { px = 50; py = 72; }
+    say('— ' + ROOMS[id].name + ' —', 'sys');
+    render();
+  }
+
+  function tryExit(dir) {
+    // map down/up words
+    if (dir === 'd' || dir === 'down') dir = 's'; // handled via room exits keys
+    const r = ROOMS[roomId];
+    let next = r.exits[dir];
+    if (!next && (dir === 'down' || dir === 'd')) next = r.exits.d || r.exits.s;
+    if (!next && (dir === 'up' || dir === 'u')) next = r.exits.u || r.exits.n;
+    if (!next) { say('Only wall, and the idea of wall.'); return; }
+    if (next === 'yard' && roomId === 'hall' && !flags.marked) {
+      say('The yard door will not admit you yet. Something unfinished clings.', 'sys');
+      return;
+    }
+    if (next === 'basement' && roomId === 'hall' && !flags.seen) {
+      say('The dark stair refuses until something has seen you.', 'sys');
+      return;
+    }
+    enter(next, dir);
+  }
+
+  function walk(dir) {
+    if (dead || ended) return;
+    const step = 7;
+    if (dir === 'n') py = Math.max(16, py - step);
+    if (dir === 's') py = Math.min(84, py + step);
+    if (dir === 'w') px = Math.max(10, px - step);
+    if (dir === 'e') px = Math.min(90, px + step);
+    render();
+    if (dir === 'e' && px >= 88) tryExit('e');
+    if (dir === 'w' && px <= 12) tryExit('w');
+    if (dir === 'n' && py <= 18) tryExit('n');
+    if (dir === 's' && py >= 82) tryExit('s');
+  }
+
+  function gate() {
+    if (unlocked || isFounder) return false;
+    if (moves >= 6) {
+      say('A price is offered from outside the frame. One-time. No ads.', 'sys');
+      return true;
+    }
+    return false;
+  }
+
+  function handle(raw) {
+    if (dead) return;
+    ensureAudio();
+    if (gate()) return;
+    let s = (raw || '').trim().toLowerCase().replace(/\s+/g, ' ');
+    if (!s) return;
+    moves++;
+    say('> ' + s, 'you');
+
+    if (s === 'fight' || s === 'flee' || s === 'hide' || s === 'run') {
+      if (!danger) say('Nothing to fight or flee. The glow is steady.');
+      else if (s === 'hide') { endDanger('You fold into the furniture. The entity passes.'); addScore(8); }
+      else if (s === 'flee' || s === 'run') {
+        endDanger('You take a door without choosing it.');
+        const dirs = Object.keys(ROOMS[roomId].exits);
+        tryExit(dirs[Math.floor(Math.random() * dirs.length)] || 'e');
+        addScore(5);
+      } else if (s === 'fight') {
+        if (Math.random() < 0.35) { endDanger('You swing. It is surprised.'); addScore(12); }
+        else playDeathFMV('You fight. The entity is not fair.');
+      }
+    } else if (s === 'help') {
+      say('Move N/W/S/E. Type: look, listen, map, take, use, talk, examine, inventory, open, read, hide, fight, flee, status. When music shifts: fight, flee, or hide. Deaths return you to the TV glow.');
+    } else if (s === 'map') {
+      say('TV glow —east→ Hall —east→ Mirror; Hall north→ Kitchen; Hall south→ Yard (marked); Hall down→ Basement (seen); TV north→ Bedroom.');
+    } else if (s === 'status') {
+      say('Nerve ' + hp + ' · score ' + score + ' · seen/marked/named ' + [flags.seen,flags.marked,flags.named].map(x=>x?'yes':'no').join('/'));
+    } else if (s === 'inventory' || s === 'i' || s === 'inv') {
+      say('Carrying: ' + (inv.length ? inv.join(', ') : 'nothing'));
+    } else if (s === 'listen') {
+      const L = {
+        tv: 'White noise with a rhythm that is almost a word.',
+        hall: 'Static from the west. A footstep that does not finish.',
+        mirror: 'Water deciding whether to drip.',
+        kitchen: 'Fridge song under the TV song.',
+        yard: 'Grass. Something practicing friendly.',
+        basement: 'A delayed answer to the static.',
+        bedroom: 'Closet breath. Mattress-shaped silence.'
+      };
+      say(L[roomId] || 'The house listens harder.');
+    } else if (s === 'look' || s === 'l' || s === 'look around') {
+      say(ROOMS[roomId].desc);
+      if (roomId === 'mirror') { flags.seen = true; addScore(5); say('The glass notices you early.', 'ok'); }
+      if (roomId === 'tv') say('The glow is the only permission the dark gives.');
+    } else if (s === 'look back' || s === 'turn around') {
+      if (roomId === 'hall') die('You look back. The hall grows through you.');
+      else say('Only the suggestion of being followed.');
+    } else if (/^(go|walk|move)\s+/.test(s) || ['north','south','east','west','n','s','e','w','up','down'].includes(s)) {
+      let d = s.replace(/^(go|walk|move)\s+/, '');
+      if (d.startsWith('n') || d === 'up') tryExit(d === 'up' ? 'n' : 'n');
+      else if (d.startsWith('s')) tryExit('s');
+      else if (d.startsWith('e')) tryExit('e');
+      else if (d.startsWith('w')) tryExit('w');
+      else if (d.startsWith('d')) {
+        if (roomId === 'hall') tryExit('d');
+        else say('No down from here.');
+      } else say('Which way?');
+    } else if (s.includes('basement') || s.includes('stair')) {
+      if (roomId === 'hall') tryExit('d');
+      else say('Find the hall first.');
+    } else if (s.startsWith('take') || s.startsWith('get')) {
+      if (roomId === 'tv' && !has('remote')) { inv.push('remote'); addScore(10); say('A remote with no batteries. It still feels warm.', 'ok'); }
+      else if (roomId === 'bedroom' && !has('lost sock')) { inv.push('lost sock'); addScore(10); say('A sock under where the bed was. Still warm.', 'ok'); }
+      else if (roomId === 'kitchen' && !has('wrong label')) { inv.push('wrong label'); addScore(10); say('EAT ME / DO NOT. Both sides earnest.', 'ok'); }
+      else if (roomId === 'mirror' && !has('fog letter')) { inv.push('fog letter'); flags.marked = true; addScore(15); say('A letter from the fog sticks to your thumb.', 'ok'); }
+      else if (roomId === 'yard' && !has('collar tag')) { inv.push('collar tag'); addScore(10); say('A tag with the name scratched out.', 'ok'); }
+      else if (roomId === 'basement' && !has('wet key')) { inv.push('wet key'); addScore(12); say('A key that should not be wet this far inland.', 'ok'); }
+      else say('Nothing else offers itself.');
+    } else if (s.startsWith('examine') || s.startsWith('look at') || s.startsWith('inspect')) {
+      const t = s.replace(/^(examine|look at|inspect)\s+/, '');
+      if (t.includes('remote') && has('remote')) say('Buttons worn smooth. Channel 03 is the only one that dents.');
+      else if (t.includes('sock') && has('lost sock')) say('Warmth without a foot.');
+      else if (t.includes('label') && has('wrong label')) say('Friendly font. Unfriendly options.');
+      else if ((t.includes('letter') || t.includes('fog')) && has('fog letter')) say('Not a word yet. A demand for a mouth.');
+      else if (t.includes('tag') && has('collar tag')) say('Removed carefully. Love or fear.');
+      else if (t.includes('key') && has('wet key')) say('Fits a door you have not found — or one you already left.');
+      else if (t.includes('tv') || t.includes('static') || t.includes('glow')) say('The glow is a mouth that only knows static.');
+      else say('Nothing special — or everything is.');
+    } else if (s.startsWith('use') || s.startsWith('give')) {
+      if (s.includes('remote') && has('remote') && roomId === 'tv') {
+        say('You click nothing. The static briefly forms a hallway, then forgets.', 'ok'); addScore(5);
+      } else if (s.includes('sock') && has('lost sock') && roomId === 'kitchen') {
+        say('The stove-eye accepts the sock and becomes only heat.', 'ok'); addScore(15);
+      } else if (s.includes('label') && has('wrong label')) {
+        flags.marked = true; say('You wear the label. Filed under maybe.', 'ok'); addScore(10);
+      } else if (s.includes('key') && has('wet key') && roomId === 'basement') {
+        say('The key turns a lock that is only air. Something below goes quiet.', 'ok'); addScore(15);
+      } else if (s.includes('tag') && has('collar tag') && roomId === 'yard') {
+        die('You try the tag on the shape. It remembers.');
+      } else say('The house declines — for now.');
+    } else if (s.startsWith('talk') || s.startsWith('say') || s.startsWith('ask') || s.startsWith('name') || s.startsWith('hello')) {
+      if (roomId === 'mirror') {
+        flags.named = true; flags.seen = true; addScore(20);
+        say('You speak a name. The mirror owns it better.', 'ok');
+      } else if (roomId === 'tv') {
+        say('You talk to the glow. It answers in snow.');
+      } else if (roomId === 'basement') {
+        say('Your voice returns half a second late — as if from under water.');
+      } else if (roomId === 'yard' && (s.includes('dog') || s.includes('here') || s.includes('hello'))) {
+        die('You call out. The shape is delighted.');
+      } else if (roomId === 'kitchen') {
+        say('Appliances listen harder than people.');
+      } else say('Your voice goes out and does not come home.');
+    } else if (s === 'open') {
+      if (roomId === 'tv') tryExit('e');
+      else if (roomId === 'bedroom') say('The closet opens a mouth of coats that are not yours.');
+      else if (roomId === 'kitchen') say('Fridge light: batteries and lunchboxes.');
+      else say('It opens enough to make a point.');
+    } else if (s === 'read') {
+      if (has('wrong label')) say('EAT ME. DO NOT.');
+      else if (has('collar tag')) say('A name carefully removed.');
+      else say('No text volunteers.');
+    } else {
+      hp -= 1;
+      say('That does not parse. Nerve ' + hp, 'bad');
+      if (hp <= 0) die('Fear takes a small, silly trophy.');
+    }
+
+    if (!ended && flags.seen && flags.marked && flags.named) {
+      ended = true;
+      say('You are seen, marked, and named.', 'ok');
+      say('ENDING — The static thins. The carpet is only carpet. For now.', 'ok');
+      addScore(50);
+    }
+    render();
+  }
+
+  function bootAudio() {
+    if (ensureAudio()) {
+      setMusicPattern('normal');
+      scheduleDanger();
+      say('The glow hums. Chip-static online.', 'ok');
+    }
+  }
+
+  unlockBtn.addEventListener('click', bootAudio);
+  document.getElementById('go').onclick = () => { ensureAudio(); handle(cmd.value); cmd.value = ''; cmd.focus(); };
+  cmd.addEventListener('keydown', e => {
+    if (e.key === 'Enter') { ensureAudio(); handle(cmd.value); cmd.value = ''; }
+  });
+  document.querySelectorAll('.pad button[data-dir]').forEach(b => {
+    b.addEventListener('click', () => { ensureAudio(); walk(b.getAttribute('data-dir')); });
+  });
+  window.addEventListener('keydown', e => {
+    if (document.activeElement === cmd) return;
+    if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.key)) {
+      e.preventDefault();
+      ensureAudio();
+      if (e.key === 'ArrowUp') walk('n');
+      if (e.key === 'ArrowDown') walk('s');
+      if (e.key === 'ArrowLeft') walk('w');
+      if (e.key === 'ArrowRight') walk('e');
+    }
+  });
+
+  // also try unlock on first pointer anywhere
+  document.body.addEventListener('touchstart', function once() {
+    ensureAudio();
+    document.body.removeEventListener('touchstart', once);
+  }, { passive: true });
+
+  say('Under the Glow v0.5 — deaths return to the TV.', 'sys');
+  if (isFounder) say('FOUNDER RELEASE — pay waived. Tap the blue sound bar if silent.', 'ok');
+  else say('Tap the sound bar, then type help.', 'sys');
+  render();
+  cmd.focus();
+})();
+  </script>
+</body>
+</html>
