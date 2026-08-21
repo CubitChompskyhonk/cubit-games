@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Under the Cot</title>
+  <meta name="theme-color" content="#07060b" />
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&display=swap');
+    :root {
+      --bg: #07060b;
+      --ink: #e4dcd2;
+      --mute: #6e6878;
+      --dim: #3a3548;
+      --bad: #d06070;
+      --ok: #7a9e82;
+      --fog: rgba(180,170,200,0.06);
+      --line: #1e1a28;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: var(--ink);
+      font-family: "Libre Baskerville", Georgia, serif;
+      height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    header {
+      padding: 10px 14px;
+      font-family: "IBM Plex Mono", monospace;
+      font-size: 10px;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: var(--mute);
+      display: flex;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--line);
+      flex-shrink: 0;
+      background: linear-gradient(180deg, #0c0a12, #07060b);
+    }
+    #score { color: #a898c8; }
+
+    #view {
+      position: relative;
+      height: 44vh;
+      min-height: 220px;
+      flex-shrink: 0;
+      overflow: hidden;
+      border-bottom: 1px solid var(--line);
+    }
+    #view::after {
+      content: "";
+      position: absolute; inset: 0;
+      background: repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 2px,
+        rgba(0,0,0,0.12) 2px,
+        rgba(0,0,0,0.12) 4px
+      );
+      pointer-events: none;
+      z-index: 5;
+      opacity: 0.5;
+    }
+    #room-label {
+      position: absolute;
+      top: 10px; left: 12px;
+      z-index: 6;
+      font-family: "IBM Plex Mono", monospace;
+      font-size: 10px;
+      letter-spacing: 0.14em;
+      color: var(--mute);
+      text-shadow: 0 1px 2px #000;
+    }
+    #backdrop {
+      position: absolute; inset: 0;
+      transition: background 0.6s ease;
+    }
+    #vignette {
+      position: absolute; inset: 0;
+      background: radial-gradient(ellipse at center, transparent 20%, rgba(0,0,0,0.45) 55%, rgba(0,0,0,0.82) 100%);
+      z-index: 2;
+      pointer-events: none;
+    }
+    #dust {
+      position: absolute; inset: 0;
+      z-index: 3;
+      pointer-events: none;
+      background-image:
+        radial-gradient(1px 1px at 10% 20%, rgba(255,255,255,0.2), transparent),
+        radial-gradient(1px 1px at 30% 60%, rgba(255,255,255,0.12), transparent),
+        radial-gradient(1px 1px at 70% 30%, rgba(255,255,255,0.15), transparent),
+        radial-gradient(1px 1px at 90% 80%, rgba(255,255,255,0.1), transparent),
+        radial-gradient(1.5px 1.5px at 50% 50%, rgba(255,255,255,0.08), transparent),
+        radial-gradient(1px 1px at 45% 15%, rgba(200,180,255,0.1), transparent),
+        radial-gradient(1px 1px at 60% 75%, rgba(255,200,180,0.08), transparent);
+      animation: drift 14s linear infinite;
+      opacity: 0.85;
+    }
+    #grain {
+      position: absolute; inset: 0;
+      z-index: 4;
+      pointer-events: none;
+      opacity: 0.07;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    }
+    @keyframes drift {
+      from { transform: translateY(0); }
+      to { transform: translateY(-20px); }
+    }
+    #scene-art {
+      position: absolute;
+      left: 50%; top: 48%;
+      transform: translate(-50%, -50%);
+      z-index: 1;
+      font-family: "IBM Plex Mono", monospace;
+      font-size: 12px;
+      line-height: 1.4;
+      color: rgba(160,150,180,0.35);
+      white-space: pre;
+      text-align: center;
+      pointer-events: none;
+      text-shadow: 0 0 20px rgba(100,80,140,0.2);
+    }
+    #player {
+      position: absolute;
+      width: 16px;
+      height: 26px;
+      margin-left: -8px;
+      margin-top: -26px;
+      z-index: 4;
+      transition: left 0.1s linear, top 0.1s linear;
+    }
+    #player .body {
+      width: 100%; height: 100%;
+      background: linear-gradient(180deg, #e0d0bc 0%, #8a7a68 45%, #4a3e34 100%);
+      border-radius: 5px 5px 3px 3px;
+      box-shadow:
+        0 0 0 1px rgba(0,0,0,0.5),
+        0 4px 12px rgba(0,0,0,0.4);
+      position: relative;
+    }
+    #player .body::before {
+      content: "";
+      position: absolute;
+      top: 5px; left: 3px; right: 3px; height: 7px;
+      background: #1a1512;
+      border-radius: 2px;
+      opacity: 0.85;
+    }
+    .exit-hint {
+      position: absolute;
+      z-index: 4;
+      font-family: "IBM Plex Mono", monospace;
+      font-size: 9px;
+      color: rgba(140,130,170,0.35);
+      letter-spacing: 0.2em;
+    }
+
+    #log {
+      flex: 1;
+      overflow-y: auto;
+      padding: 12px 14px;
+      font-size: 14px;
+      line-height: 1.55;
+      -webkit-overflow-scrolling: touch;
+      background: linear-gradient(180deg, #0a0810, #07060b);
+    }
+    #log div { margin-bottom: 8px; animation: fadein 0.25s ease; }
+    @keyframes fadein {
+      from { opacity: 0; transform: translateY(4px); }
+      to { opacity: 1; transform: none; }
+    }
+    #log .sys { color: var(--mute); font-size: 12px; font-family: "IBM Plex Mono", monospace; }
+    #log .bad { color: var(--bad); }
+    #log .ok { color: var(--ok); }
+    #log .you { color: #a89888; font-style: italic; }
+
+    .inv {
+      padding: 6px 14px;
+      font-size: 11px;
+      font-family: "IBM Plex Mono", monospace;
+      color: var(--mute);
+      border-top: 1px solid var(--line);
+      background: #0a0810;
+      flex-shrink: 0;
+    }
+    .founder {
+      font-size: 10px;
+      font-family: "IBM Plex Mono", monospace;
+      color: var(--ok);
+      padding: 0 14px 4px;
+      background: #0a0810;
+    }
+    .pad {
+      display: grid;
+      grid-template-columns: 44px 44px 44px;
+      grid-template-rows: 34px 34px;
+      gap: 5px;
+      padding: 6px 10px 4px;
+      justify-content: center;
+      background: #0a0810;
+      flex-shrink: 0;
+    }
+    .pad button {
+      background: #141022;
+      border: 1px solid #2a2440;
+      color: var(--mute);
+      border-radius: 6px;
+      font-family: "IBM Plex Mono", monospace;
+      font-size: 11px;
+      cursor: pointer;
+    }
+    .pad button:active { background: #1e1838; color: var(--ink); }
+    .pad .blank { visibility: hidden; }
+    .bar {
+      display: flex;
+      gap: 8px;
+      padding: 8px 10px 14px;
+      background: #0a0810;
+      border-top: 1px solid var(--line);
+      flex-shrink: 0;
+    }
+    #cmd {
+      flex: 1;
+      background: #100e18;
+      border: 1px solid #2a2440;
+      color: var(--ink);
+      padding: 12px 14px;
+      font-size: 16px;
+      outline: none;
+      border-radius: 6px;
+      font-family: "Libre Baskerville", serif;
+    }
+    #cmd:focus { border-color: #4a4070; }
+    #go {
+      background: #1a1630;
+      border: 1px solid #3a3460;
+      color: var(--ink);
+      padding: 0 16px;
+      border-radius: 6px;
+      font-family: "IBM Plex Mono", monospace;
+      font-size: 12px;
+      cursor: pointer;
+    }
+  
+    #backdrop {
+      background-size: cover !important;
+      background-position: center !important;
+    }
+    /* Art slots: set --room-art: url(...) per room when assets arrive */
+    #view.art-ready #scene-art { opacity: 0.15; }
+</style>
+</head>
+<body>
+  <header>
+    <span>Under the Cot · skeleton</span>
+    <span id="score">0</span>
+  </header>
+  <div id="view">
+    <div id="backdrop"></div>
+    <div id="dust"></div><div id="grain"></div>
+    <div id="vignette"></div>
+    <div id="room-label"></div>
+    <div id="scene-art"></div>
+    <div id="player"><div class="body"></div></div>
+    <div class="exit-hint" id="hint-n" style="top:8px;left:50%;transform:translateX(-50%)"></div>
+    <div class="exit-hint" id="hint-s" style="bottom:8px;left:50%;transform:translateX(-50%)"></div>
+    <div class="exit-hint" id="hint-w" style="left:8px;top:50%"></div>
+    <div class="exit-hint" id="hint-e" style="right:8px;top:50%"></div>
+  </div>
+  <div class="founder" id="founder"></div>
+  <div class="inv" id="inv">Carrying: nothing</div>
+  <div id="log"></div>
+  <div class="pad">
+    <button class="blank"></button>
+    <button type="button" data-dir="n">N</button>
+    <button class="blank"></button>
+    <button type="button" data-dir="w">W</button>
+    <button type="button" data-dir="s">S</button>
+    <button type="button" data-dir="e">E</button>
+  </div>
+  <div class="bar">
+    <input id="cmd" placeholder="What do you do?" autocomplete="off" enterkeyhint="done" />
+    <button type="button" id="go">Do</button>
+  </div>
+  <script>
+(function () {
+  const params = new URLSearchParams(location.search);
+  const isFounder = params.get('access') === 'founder' || localStorage.getItem('utc_founder') === '1';
+  if (params.get('access') === 'founder') localStorage.setItem('utc_founder', '1');
+  let unlocked = isFounder || localStorage.getItem('utc_unlocked') === '1' || params.get('paid') === '1';
+  if (params.get('paid') === '1') localStorage.setItem('utc_unlocked', '1');
+
+  const ROOMS = {
+    cot: {
+      name: 'Under the Cot',
+      art: '····· · ·\n═ ═ ═ frame ═ ═ ═\n  shadow pool\n   a wrong door',
+      bg: 'radial-gradient(ellipse at 50% 85%, #2a1c28 0%, #141018 35%, #0a0810 65%, #050408 100%)',
+      exits: { e: 'hall' },
+      desc: 'Dust hangs in the dark like it is listening. A lost sock waits. The door in the wall is the size of a bad idea.'
+    },
+    hall: {
+      name: 'The Hall That Lengthens',
+      art: '│\n│    │\n│        │\n│            │\n   (behind you)',
+      bg: 'linear-gradient(95deg, #08060e 0%, #1a1428 35%, #12101c 55%, #0a0814 100%)',
+      exits: { w: 'cot', e: 'mirror', n: 'kitchen', s: 'yard' },
+      desc: 'Wallpaper breathes on a delay. The far end recedes when watched. Looking back is a gift the house keeps.'
+    },
+    mirror: {
+      name: 'Bathroom Mirror',
+      art: '┌──────────┐\n│   fog     │\n│  arrives  │\n│   first   │\n└──────────┘',
+      bg: 'radial-gradient(ellipse at 50% 35%, #2a3040 0%, #141828 30%, #0c1018 60%, #06080e 100%)',
+      exits: { w: 'hall' },
+      desc: 'Condensation forms letters before your breath does. The tiles are warmer than skin.'
+    },
+    kitchen: {
+      name: 'Kitchen at 3:17',
+      art: '  (◉)  eye\n ≈≈≈≈≈≈≈≈≈\n  hummmmm\n  3:17',
+      bg: 'radial-gradient(ellipse at 25% 55%, #3a1818 0%, #1a1014 30%, #0c0a10 60%, #060508 100%)',
+      exits: { s: 'hall' },
+      desc: 'Every label is a dare in a friendly font. The fridge light stays on in the dark on purpose. The clock loves 3:17.'
+    },
+    yard: {
+      name: 'Yard with the Wrong Dog',
+      art: ' ·  ·  ·  ·\n╱ fence  ╲\n  grass\n  wag ?',
+      bg: 'radial-gradient(ellipse at 50% 100%, #0a1a14 0%, #0c1410 25%, #080a0c 55%, #050608 100%)',
+      exits: { n: 'hall' },
+      desc: 'Night lawn. A shape is eager. Names are sharp tools here.'
+    }
+  };
+
+  let roomId = 'cot', px = 50, py = 72;
+  let inv = [], hp = 3, score = 0, moves = 0, dead = false;
+  let flags = { seen: false, marked: false, named: false };
+
+  const logEl = document.getElementById('log');
+  const artEl = document.getElementById('scene-art');
+  const labelEl = document.getElementById('room-label');
+  const invEl = document.getElementById('inv');
+  const playerEl = document.getElementById('player');
+  const scoreEl = document.getElementById('score');
+  const backdrop = document.getElementById('backdrop');
+  const cmd = document.getElementById('cmd');
+
+  function say(t, cls) {
+    const d = document.createElement('div');
+    if (cls) d.className = cls;
+    d.textContent = t;
+    logEl.appendChild(d);
+    while (logEl.children.length > 40) logEl.removeChild(logEl.firstChild);
+    logEl.scrollTop = logEl.scrollHeight;
+  }
+  function addScore(n) { score += n; scoreEl.textContent = String(score); }
+
+  function render() {
+    const r = ROOMS[roomId];
+    labelEl.textContent = r.name;
+    artEl.textContent = r.art;
+    backdrop.style.background = r.bg;
+    invEl.textContent = 'Carrying: ' + (inv.length ? inv.join(', ') : 'nothing');
+    playerEl.style.left = px + '%';
+    playerEl.style.top = py + '%';
+    document.getElementById('founder').textContent = isFounder ? 'Founder channel — pay waived' : '';
+    ['n','s','e','w'].forEach(d => {
+      document.getElementById('hint-' + d).textContent = r.exits[d] ? d.toUpperCase() : '';
+    });
+  }
+
+  function enter(id, via) {
+    roomId = id;
+    if (via === 'e') { px = 16; py = 72; }
+    else if (via === 'w') { px = 84; py = 72; }
+    else if (via === 'n') { px = 50; py = 80; }
+    else if (via === 's') { px = 50; py = 26; }
+    else { px = 50; py = 72; }
+    say('— ' + ROOMS[id].name + ' —', 'sys');
+    render();
+  }
+
+  function tryExit(dir) {
+    const next = ROOMS[roomId].exits[dir];
+    if (!next) { say('Only wall, and the idea of wall.'); return; }
+    if (dir === 's' && roomId === 'hall' && !flags.marked) {
+      say('The yard door will not admit you yet. Something unfinished clings.', 'sys');
+      return;
+    }
+    enter(next, dir);
+  }
+
+  function walk(dir) {
+    if (dead) return;
+    const step = 7;
+    if (dir === 'n') py = Math.max(16, py - step);
+    if (dir === 's') py = Math.min(84, py + step);
+    if (dir === 'w') px = Math.max(10, px - step);
+    if (dir === 'e') px = Math.min(90, px + step);
+    render();
+    if (dir === 'e' && px >= 88) tryExit('e');
+    if (dir === 'w' && px <= 12) tryExit('w');
+    if (dir === 'n' && py <= 18) tryExit('n');
+    if (dir === 's' && py >= 82) tryExit('s');
+  }
+
+  function die(msg) {
+    dead = true;
+    say(msg, 'bad');
+    say('You wake under the cot. The house calls this mercy.', 'sys');
+    setTimeout(() => {
+      dead = false; inv = []; hp = 3;
+      flags = { seen: false, marked: false, named: false };
+      enter('cot');
+      say('Dust. Again. Type help if the dark thickens.', 'sys');
+    }, 700);
+  }
+
+  function gate() {
+    if (unlocked || isFounder) return false;
+    if (moves >= 5) {
+      say('A price is offered from outside the frame. One-time. No ads. No extras.', 'sys');
+      say('Return with ?paid=1 — or use founder access.', 'sys');
+      return true;
+    }
+    return false;
+  }
+
+  function handle(raw) {
+    if (dead) return;
+    if (gate()) return;
+    let s = (raw || '').trim().toLowerCase().replace(/\s+/g, ' ');
+    if (!s) return;
+    moves++;
+    say('> ' + s, 'you');
+    const has = (i) => inv.includes(i);
+
+    if (s === 'inventory' || s === 'i' || s === 'inv') {
+      say('Carrying: ' + (inv.length ? inv.join(', ') : 'nothing') + '. Try examine <item>.');
+    } else if (s === 'listen') {
+      const listens = {
+        cot: 'Dust settling. Somewhere above, a mattress that is too light.',
+        hall: 'Fluorescent breath. A footstep that does not finish.',
+        mirror: 'Water deciding whether to drip.',
+        kitchen: 'The fridge composing a song you almost know.',
+        yard: 'Grass. And something practicing being friendly.'
+      };
+      say(listens[roomId] || 'The house listens harder than you do.');
+    } else if (s === 'help') {
+      say('Move: arrows or N/W/S/E. Type: look, listen, take, use, talk, examine, inventory, open, read, hide, look back, status, help.');
+    } else if (s === 'status') {
+      say('Nerve ' + hp + ' · score ' + score + ' · seen/marked/named ' + [flags.seen,flags.marked,flags.named].map(x=>x?'yes':'no').join('/'));
+    } else if (s === 'look' || s === 'look around' || s === 'l') {
+      say(ROOMS[roomId].desc);
+      if (roomId === 'mirror') { flags.seen = true; addScore(5); say('The glass notices you a half-second early.', 'ok'); }
+    } else if (s === 'look back' || s === 'turn around') {
+      if (roomId === 'hall') die('You look back. The hall accepts the offering and grows through you.');
+      else say('Behind you: only the suggestion of being followed.');
+    } else if (/^(go|walk|move)\s+/.test(s) || ['north','south','east','west','n','s','e','w'].includes(s)) {
+      let d = s.replace(/^(go|walk|move)\s+/, '');
+      if (d.startsWith('n')) tryExit('n');
+      else if (d.startsWith('s')) tryExit('s');
+      else if (d.startsWith('e')) tryExit('e');
+      else if (d.startsWith('w')) tryExit('w');
+      else say('Which way? North, south, east, west.');
+    } else if (s.startsWith('take') || s.startsWith('get') || s.startsWith('pick')) {
+      if (roomId === 'cot' && !has('lost sock')) {
+        inv.push('lost sock'); addScore(10);
+        say('You take the sock. It is warm. The warmth is the joke.', 'ok');
+      } else if (roomId === 'kitchen' && !has('wrong label')) {
+        inv.push('wrong label'); addScore(10);
+        say('You peel a label: EAT ME on one side, DO NOT on the other. Both are earnest.', 'ok');
+      } else if (roomId === 'mirror' && !has('fog letter')) {
+        inv.push('fog letter'); flags.marked = true; addScore(15);
+        say('You steal a letter from the fog. It stays on your thumb like a grade.', 'ok');
+      } else if (roomId === 'yard' && !has('collar tag')) {
+        inv.push('collar tag'); addScore(10);
+        say('A tag in the grass. The name has been removed with care.', 'ok');
+      } else say('Nothing else wants to be held.');
+    } else if (s.startsWith('use') || s.startsWith('give') || s.startsWith('put')) {
+      if (s.includes('sock') && has('lost sock') && roomId === 'kitchen') {
+        addScore(15); say('You offer the sock to the stove-eye. It blinks, pleased, and returns to being heat.', 'ok');
+      } else if (s.includes('label') && has('wrong label')) {
+        flags.marked = true; addScore(10); say('You wear the label. You are filed under maybe.', 'ok');
+      } else if ((s.includes('letter') || s.includes('fog')) && has('fog letter') && roomId === 'yard') {
+        addScore(10); say('You raise the letter. The yard goes quiet in a personal way.', 'ok');
+      } else if (s.includes('tag') && has('collar tag') && roomId === 'yard') {
+        die('You try the tag on the shape. It remembers. You should not have helped.');
+      } else say('The house declines — for now.');
+    } else if (s.startsWith('talk') || s.startsWith('say') || s.startsWith('ask') || s.startsWith('name') || s.startsWith('hello')) {
+      if (roomId === 'mirror') {
+        flags.named = true; flags.seen = true; addScore(20);
+        if (s.includes('who') || s.includes('what')) say('The fog answers: "I am the first draft of you."', 'ok');
+        else if (s.includes('help')) say('"Wipe me," the glass suggests, "or become me."', 'ok');
+        else say('You speak a name. The mirror repeats it with better ownership.', 'ok');
+      } else if (roomId === 'kitchen') {
+        if (s.includes('stove') || s.includes('eye')) say('The stove-eye focuses. "Hungry is a kind of prayer," it does not say aloud.');
+        else if (s.includes('fridge')) say('Cold air: "Leftovers remember who left them."');
+        else say('Appliances listen harder than people. Nothing answers in words.');
+      } else if (roomId === 'hall') {
+        say('Wallpaper rustles like a throat clearing. No one is there to finish the sentence.');
+      } else if (roomId === 'yard' && (s.includes('dog') || s.includes('boy') || s.includes('here') || s.includes('hello'))) {
+        die('You call out. The shape is delighted. That is worse.');
+      } else if (roomId === 'cot') {
+        say('Under here, talk is mostly breathing. The sock does not reply. Good.');
+      } else say('Your voice goes out and does not come home.');
+    } else if (s === 'open') {
+      if (roomId === 'cot') tryExit('e');
+      else if (roomId === 'kitchen') say('The fridge yields a stripe of light that smells like batteries and lunchboxes.');
+      else say('It opens enough to make a point.');
+    } else if (s === 'read') {
+      if (has('wrong label')) say('EAT ME. DO NOT. The kerning is friendly.');
+      else if (has('collar tag')) say('Once a name. Removed carefully.');
+      else say('No text volunteers.');
+     else if (s.startsWith('examine') || s.startsWith('look at') || s.startsWith('inspect')) {
+      const t = s.replace(/^(examine|look at|inspect)\s+/, '');
+      if (t.includes('sock') && has('lost sock')) say('Still warm. The warmth is the whole joke and the whole threat.');
+      else if (t.includes('label') && has('wrong label')) say('EAT ME / DO NOT. Typeset like a cereal box that went to night school.');
+      else if (t.includes('letter') || t.includes('fog')) { if (has('fog letter')) say('A single character that refuses to be a word. It wants a mouth.'); else say('No letter yet.'); }
+      else if (t.includes('tag') && has('collar tag')) say('Name removed with care. Whoever did it loved the animal or feared it.');
+      else if (t.includes('cot') || t.includes('bed')) say('The frame is lower than memory. Something could live under it forever.');
+      else say('Nothing special — or everything is, and you missed it.');
+    }
+    } else if (s === 'hide') {
+      say('You hide. The room counts to ten in a voice you almost know. Nerve holds.');
+    } else {
+      hp -= 1;
+      say('That does not parse. Nerve ' + hp, 'bad');
+      if (hp <= 0) die('Fear takes a small, silly trophy.');
+    }
+
+    if (flags.seen && flags.marked && flags.named) {
+      say('You are seen, marked, and named.', 'ok');
+      say('The cot lifts like a curtain. Ending — the carpet is only carpet. For now.', 'ok');
+      addScore(50);
+      flags.named = false;
+    }
+    render();
+  }
+
+  document.getElementById('go').onclick = () => { handle(cmd.value); cmd.value = ''; cmd.focus(); };
+  cmd.addEventListener('keydown', e => { if (e.key === 'Enter') { handle(cmd.value); cmd.value = ''; } });
+  document.querySelectorAll('.pad button[data-dir]').forEach(b => b.addEventListener('click', () => walk(b.getAttribute('data-dir'))));
+  window.addEventListener('keydown', e => {
+    if (document.activeElement === cmd) return;
+    if (e.key === 'ArrowUp') { e.preventDefault(); walk('n'); }
+    if (e.key === 'ArrowDown') { e.preventDefault(); walk('s'); }
+    if (e.key === 'ArrowLeft') { e.preventDefault(); walk('w'); }
+    if (e.key === 'ArrowRight') { e.preventDefault(); walk('e'); }
+  });
+
+  say('You are under the cot. The dark has texture.', 'sys');
+  if (isFounder) say('Founder channel — all pay requirements waived.', 'ok');
+  render();
+  cmd.focus();
+})();
+  </script>
+</body>
+</html>
