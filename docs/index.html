@@ -172,11 +172,36 @@
       border-radius: 4px; padding: 4px 6px; cursor: pointer;
     }
 
+
+    #view {
+      border-radius: 18px / 22px;
+      margin: 6px 10px 0;
+      box-shadow:
+        inset 0 0 0 3px #0a0a0c,
+        inset 0 0 0 5px #1a1a22,
+        0 0 24px rgba(0,0,0,0.8);
+    }
+    #view.tv-room {
+      box-shadow:
+        inset 0 0 0 3px #0a0a0c,
+        inset 0 0 0 5px #1a2230,
+        0 0 30px rgba(60,120,200,0.15),
+        inset 0 0 80px rgba(40,100,180,0.08);
+    }
+    #view.danger-roll {
+      animation: crtRoll 0.15s steps(2, end) infinite;
+    }
+    @keyframes crtRoll {
+      0% { transform: translateY(0); }
+      50% { transform: translateY(2px); }
+      100% { transform: translateY(-1px); }
+    }
+
   </style>
 </head>
 <body>
   <header>
-    <span>Under the Glow · v0.8</span>
+    <span>Under the Glow · v0.9</span>
     <span id="score">0</span>
   </header>
   <div id="view">
@@ -413,7 +438,7 @@
     if (danger || dead || ended) return;
     if (!musicStarted) return;
     danger = true;
-    setMusicPattern('danger'); setFxMode('danger');
+    setMusicPattern('danger'); setFxMode('danger'); if (viewEl) viewEl.classList.add('danger-roll');
     document.getElementById('danger-bar').classList.add('on');
     say('The tune warps. Something uses the doorway.', 'bad');
     say('FIGHT · FLEE · HIDE', 'sys');
@@ -426,7 +451,7 @@
   function endDanger(msg) {
     danger = false;
     clearTimeout(entityTimer);
-    setMusicPattern('normal'); setFxMode('normal');
+    setMusicPattern('normal'); setFxMode('normal'); if (viewEl) viewEl.classList.remove('danger-roll');
     document.getElementById('danger-bar').classList.remove('on');
     if (msg) say(msg, 'ok');
   }
@@ -476,7 +501,7 @@
     danger = false;
     clearTimeout(entityTimer);
     document.getElementById('danger-bar').classList.remove('on');
-    setMusicPattern('death'); setFxMode('death');
+    setMusicPattern('death'); setFxMode('death'); if (viewEl) viewEl.classList.remove('danger-roll');
     const fmv = document.getElementById('fmv');
     fmv.querySelector('.title').textContent = 'DEATH · 5 SECONDS';
     fmv.querySelector('.art').textContent =
@@ -494,7 +519,7 @@
     examineMemory.letter = 'The letter already tried to be your name once.';
     setTimeout(() => {
       fmv.classList.remove('show');
-      setMusicPattern('normal'); setFxMode('normal');
+      setMusicPattern('normal'); setFxMode('normal'); if (viewEl) viewEl.classList.remove('danger-roll');
       dead = false; inv = []; hp = 3; ended = false;
       flags = { seen: false, marked: false, named: false }; hallStretch = 0; mercyLeft = 1; hideCount = 0; fightCount = 0;
       enter('tv');
@@ -742,7 +767,7 @@
 
   function bootAudio() {
     if (ensureAudio()) {
-      setMusicPattern('normal'); setFxMode('normal');
+      setMusicPattern('normal'); setFxMode('normal'); if (viewEl) viewEl.classList.remove('danger-roll');
       scheduleDanger();
       say('The glow hums. Chip-static online.', 'ok');
     }
@@ -799,44 +824,74 @@
       fxCtx.fillStyle = '#000';
       fxCtx.fillRect(0, 0, w, h);
       const flash = (fxDeathT % 8) < 2;
-      fxCtx.fillStyle = flash ? 'rgba(180,40,60,0.35)' : 'rgba(20,40,80,0.5)';
+      fxCtx.fillStyle = flash ? 'rgba(180,40,60,0.35)' : 'rgba(20,40,80,0.55)';
       fxCtx.fillRect(0, 0, w, h);
-      // scan bars
-      fxCtx.fillStyle = 'rgba(255,255,255,0.06)';
-      for (let y = (fxDeathT * 3) % 12; y < h; y += 12) fxCtx.fillRect(0, y, w, 2);
-      // abstract cut
-      fxCtx.strokeStyle = 'rgba(220,200,200,0.4)';
+      fxCtx.fillStyle = 'rgba(255,255,255,0.07)';
+      for (let y = (fxDeathT * 4) % 10; y < h; y += 10) fxCtx.fillRect(0, y, w, 2);
+      fxCtx.strokeStyle = 'rgba(220,200,200,0.45)';
       fxCtx.lineWidth = 2;
       fxCtx.beginPath();
-      fxCtx.moveTo(w * 0.2, h * 0.3);
-      fxCtx.lineTo(w * 0.8, h * 0.7);
+      fxCtx.moveTo(w * 0.15, h * 0.25);
+      fxCtx.lineTo(w * 0.85, h * 0.75);
       fxCtx.stroke();
+      // loss of sync bars
+      fxCtx.fillStyle = 'rgba(200,200,255,0.15)';
+      fxCtx.fillRect(0, (fxDeathT * 7) % h, w, 6);
       return;
     }
-    const img = fxCtx.createImageData(w, h);
-    const d = img.data;
     const danger = fxMode === 'danger';
     const tv = roomId === 'tv';
+    // base noise (with slight RGB fringe on TV)
+    const img = fxCtx.createImageData(w, h);
+    const d = img.data;
     for (let i = 0; i < d.length; i += 4) {
       const n = Math.random();
-      let v = n * (tv ? 55 : 28);
-      if (danger) v = n * 90;
-      d[i] = danger ? v : (tv ? v * 0.7 : v * 0.4);
-      d[i+1] = danger ? v * 0.3 : (tv ? v * 0.85 : v * 0.4);
-      d[i+2] = danger ? v * 0.3 : (tv ? v + 20 : v * 0.5);
-      d[i+3] = danger ? 50 : (tv ? 40 : 22);
+      let v = n * (tv ? 60 : 26);
+      if (danger) v = n * 95;
+      d[i]   = danger ? v : (tv ? v * 0.75 : v * 0.35);
+      d[i+1] = danger ? v * 0.35 : (tv ? v * 0.9 : v * 0.35);
+      d[i+2] = danger ? v * 0.35 : (tv ? v + 24 : v * 0.45);
+      d[i+3] = danger ? 55 : (tv ? 42 : 20);
     }
     fxCtx.putImageData(img, 0, 0);
-    // scanlines
-    fxCtx.fillStyle = 'rgba(0,0,0,0.12)';
-    for (let y = 0; y < h; y += 3) fxCtx.fillRect(0, y, w, 1);
+    // RGB fringe (TV / danger)
+    if (tv || danger) {
+      fxCtx.globalCompositeOperation = 'screen';
+      fxCtx.fillStyle = 'rgba(255,0,40,' + (danger ? '0.04' : '0.025') + ')';
+      fxCtx.fillRect(-1, 0, w, h);
+      fxCtx.fillStyle = 'rgba(40,120,255,' + (danger ? '0.05' : '0.03') + ')';
+      fxCtx.fillRect(1, 0, w, h);
+      fxCtx.globalCompositeOperation = 'source-over';
+    }
+    // denser scanlines
+    fxCtx.fillStyle = danger ? 'rgba(0,0,0,0.28)' : 'rgba(0,0,0,0.18)';
+    for (let y = 0; y < h; y += 3) fxCtx.fillRect(0, y, w, 1.2);
+    // interlaced dim
+    if ((asciiFlicker % 4) < 2) {
+      fxCtx.fillStyle = 'rgba(0,0,0,0.06)';
+      for (let y = 1; y < h; y += 6) fxCtx.fillRect(0, y, w, 2);
+    }
+    // phosphor hint (vertical RGB) TV only
     if (tv) {
-      const g = fxCtx.createRadialGradient(w/2, h*0.35, 10, w/2, h*0.4, w*0.45);
-      g.addColorStop(0, 'rgba(120,180,255,0.12)');
+      for (let x = 0; x < w; x += 3) {
+        fxCtx.fillStyle = 'rgba(255,60,60,0.03)';
+        fxCtx.fillRect(x, 0, 1, h);
+        fxCtx.fillStyle = 'rgba(60,255,80,0.025)';
+        fxCtx.fillRect(x + 1, 0, 1, h);
+        fxCtx.fillStyle = 'rgba(60,100,255,0.035)';
+        fxCtx.fillRect(x + 2, 0, 1, h);
+      }
+    }
+    // center bloom
+    if (tv) {
+      const g = fxCtx.createRadialGradient(w/2, h*0.35, 8, w/2, h*0.4, w*0.5);
+      g.addColorStop(0, 'rgba(140,190,255,0.16)');
+      g.addColorStop(0.5, 'rgba(60,100,180,0.05)');
       g.addColorStop(1, 'rgba(0,0,0,0)');
       fxCtx.fillStyle = g;
       fxCtx.fillRect(0, 0, w, h);
     }
+    // danger roll cue handled by CSS class
   }
   function fxLoop() {
     drawFx();
@@ -868,7 +923,7 @@
   setTimeout(resizeFx, 50);
   requestAnimationFrame(fxLoop);
 
-  say('Under the Glow v0.8 — deaths return to the TV.', 'sys');
+  say('Under the Glow v0.9 — deaths return to the TV.', 'sys');
   if (isFounder) say('FOUNDER RELEASE — pay waived. Tap the blue sound bar if silent.', 'ok');
   else say('Tap the sound bar, then type help.', 'sys');
   render();
