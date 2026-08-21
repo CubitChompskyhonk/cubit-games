@@ -156,7 +156,7 @@
 </head>
 <body>
   <header>
-    <span>Under the Glow · v0.5</span>
+    <span>Under the Glow · v0.6</span>
     <span id="score">0</span>
   </header>
   <div id="view">
@@ -403,6 +403,39 @@
     if (msg) say(msg, 'ok');
   }
 
+  
+  // --- Framework unease (no art required) ---
+  let dwell = 0;
+  let attention = 0;
+  setInterval(function() {
+    if (dead || ended) return;
+    dwell++;
+    if (dwell === 25 && roomId === 'tv') {
+      say('The static leans toward you. Not louder — closer.', 'sys');
+    }
+    if (dwell === 40) {
+      say('You have been in this house long enough to be counted.', 'sys');
+      attention++;
+    }
+    if (dwell > 0 && dwell % 55 === 0 && !danger) {
+      const lines = [
+        'Something adjusts a picture that is not on the wall.',
+        'A laugh track without a joke, under the floor.',
+        'The glow refreshes as if someone changed the channel to you.',
+        'Your name is not spoken. The pause where it would fit is.',
+        'Carpet fibers remember a weight that is not yours yet.'
+      ];
+      say(lines[Math.floor(Math.random()*lines.length)], 'sys');
+      attention++;
+      if (attention >= 3 && !danger && musicStarted) {
+        say('The house has paid too much attention.', 'bad');
+        startDanger();
+      }
+    }
+  }, 1000);
+
+  function resetDwell() { dwell = 0; }
+
   function scheduleDanger() {
     clearTimeout(dangerTimer);
     dangerTimer = setTimeout(() => {
@@ -470,6 +503,7 @@
     else if (via === 's') { px = 50; py = 26; }
     else { px = 50; py = 72; }
     say('— ' + ROOMS[id].name + ' —', 'sys');
+    resetDwell();
     render();
   }
 
@@ -537,7 +571,7 @@
         else playDeathFMV('You fight. The entity is not fair.');
       }
     } else if (s === 'help') {
-      say('Move N/W/S/E. Type: look, listen, map, take, use, talk, examine, inventory, open, read, hide, fight, flee, status. When music shifts: fight, flee, or hide. Deaths return you to the TV glow.');
+      say('Move N/W/S/E. Type: look, listen, map, take, use, talk, examine, inventory, open, read, hide, fight, flee, status. When music shifts: fight, flee, or hide. Deaths return you to the TV glow. This game is built to scare without pictures.');
     } else if (s === 'map') {
       say('TV glow —east→ Hall —east→ Mirror; Hall north→ Kitchen; Hall south→ Yard (marked); Hall down→ Basement (seen); TV north→ Bedroom.');
     } else if (s === 'status') {
@@ -576,7 +610,7 @@
       if (roomId === 'hall') tryExit('d');
       else say('Find the hall first.');
     } else if (s.startsWith('take') || s.startsWith('get')) {
-      if (roomId === 'tv' && !has('remote')) { inv.push('remote'); addScore(10); say('A remote with no batteries. It still feels warm.', 'ok'); }
+      if (roomId === 'tv' && !has('remote')) { inv.push('remote'); addScore(10); say('A remote with no batteries. It still feels warm.', 'ok'); say('In the static: a commercial for sleeping.', 'sys'); }
       else if (roomId === 'bedroom' && !has('lost sock')) { inv.push('lost sock'); addScore(10); say('A sock under where the bed was. Still warm.', 'ok'); }
       else if (roomId === 'kitchen' && !has('wrong label')) { inv.push('wrong label'); addScore(10); say('EAT ME / DO NOT. Both sides earnest.', 'ok'); }
       else if (roomId === 'mirror' && !has('fog letter')) { inv.push('fog letter'); flags.marked = true; addScore(15); say('A letter from the fog sticks to your thumb.', 'ok'); }
@@ -592,7 +626,7 @@
       else if (t.includes('tag') && has('collar tag')) say('Removed carefully. Love or fear.');
       else if (t.includes('key') && has('wet key')) say('Fits a door you have not found — or one you already left.');
       else if (t.includes('tv') || t.includes('static') || t.includes('glow')) say('The glow is a mouth that only knows static.');
-      else say('Nothing special — or everything is.');
+      else say('Nothing special — or everything is. The room examines you back.');
     } else if (s.startsWith('use') || s.startsWith('give')) {
       if (s.includes('remote') && has('remote') && roomId === 'tv') {
         say('You click nothing. The static briefly forms a hallway, then forgets.', 'ok'); addScore(5);
@@ -636,7 +670,7 @@
     if (!ended && flags.seen && flags.marked && flags.named) {
       ended = true;
       say('You are seen, marked, and named.', 'ok');
-      say('ENDING — The static thins. The carpet is only carpet. For now.', 'ok');
+      say('ENDING — The static thins. For a moment the TV shows a living room with the lights on.', 'ok'); say('Then only carpet. For now.', 'ok');
       addScore(50);
     }
     render();
@@ -676,7 +710,7 @@
     document.body.removeEventListener('touchstart', once);
   }, { passive: true });
 
-  say('Under the Glow v0.5 — deaths return to the TV.', 'sys');
+  say('Under the Glow v0.6 — deaths return to the TV.', 'sys');
   if (isFounder) say('FOUNDER RELEASE — pay waived. Tap the blue sound bar if silent.', 'ok');
   else say('Tap the sound bar, then type help.', 'sys');
   render();
