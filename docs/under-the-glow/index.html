@@ -201,7 +201,7 @@
 </head>
 <body>
   <header>
-    <span>Under the Glow · v0.9</span>
+    <span>Under the Glow · v0.10</span>
     <span id="score">0</span>
   </header>
   <div id="view">
@@ -337,6 +337,8 @@
   let fightCount = 0;
   let deathCount = 0;
   let examineMemory = {};
+  let awayTime = 0;
+  let lastGuideStage = -1;
 
   const logEl = document.getElementById('log');
   const artEl = document.getElementById('scene-art');
@@ -489,6 +491,67 @@
 
   function resetDwell() { dwell = 0; }
 
+  function questStage() {
+    if (flags.named && flags.marked && flags.seen) return 3;
+    if (flags.marked && flags.seen) return 2;
+    if (flags.seen) return 1;
+    return 0;
+  }
+  function tvGuide(force) {
+    const stage = questStage();
+    const lines = [
+      [
+        'Static clears for a second: YOU MUST BE SEEN.',
+        'Find the glass that writes first. Look until it notices you.',
+        'You are only safe under the glow. Do not stay away too long.'
+      ],
+      [
+        'The channel knows you were seen. Now you must be MARKED.',
+        'Take a letter from fog — or wear a wrong label. Let the house file you.',
+        'Only the glow is kind. Come back before the house finishes counting.'
+      ],
+      [
+        'Seen. Marked. The last step is to be NAMED.',
+        'Speak at the mirror. Give it something it can keep.',
+        'Do not linger in the corridors. The glow is the only mercy.'
+      ],
+      [
+        'The static thins when it wants to. You did what the channel asked.',
+        'If the carpet returns, it is only for now.',
+        'You can stay under the glow. The house will not argue.'
+      ]
+    ];
+    const pack = lines[stage] || lines[0];
+    if (force || stage !== lastGuideStage) {
+      lastGuideStage = stage;
+      pack.forEach(line => say(line, 'sys'));
+    } else {
+      say(pack[Math.floor(Math.random() * pack.length)], 'sys');
+      say('You are only safe under the glow.', 'sys');
+    }
+  }
+  // Stray-from-glow pressure
+  setInterval(function() {
+    if (dead || ended) return;
+    if (roomId === 'tv') {
+      awayTime = 0;
+      return;
+    }
+    awayTime++;
+    if (awayTime === 28) {
+      say('The glow feels far. The TV would tell you to come back.', 'sys');
+    }
+    if (awayTime === 45) {
+      say('You have stayed away too long. The house notices the empty carpet under the set.', 'bad');
+    }
+    if (awayTime >= 55 && !danger && musicStarted) {
+      say('Signal loss. Something fills the space you left under the glow.', 'bad');
+      awayTime = 20;
+      startDanger();
+    }
+  }, 1000);
+
+
   function scheduleDanger() {
     clearTimeout(dangerTimer);
     dangerTimer = setTimeout(() => {
@@ -560,6 +623,10 @@
     else if (via === 's') { px = 50; py = 26; }
     else { px = 50; py = 72; }
     say('— ' + ROOMS[id].name + ' —', 'sys'); if (typeof resizeFx === 'function') resizeFx();
+    if (id === 'tv') {
+      awayTime = 0;
+      say('The glow holds. For a moment the noise is almost language.', 'sys');
+    }
     resetDwell();
     render();
   }
@@ -650,16 +717,16 @@
         else playDeathFMV('You fight. The entity is not fair.');
       }
     } else if (s === 'help') {
-      say('Move N/W/S/E. Type: look, listen, map, take, use, talk, examine, inventory, open, read, hide, fight, flee, status. When music shifts: fight, flee, or hide. Deaths return you to the TV glow. Scare without pictures. Hall may stretch. One true hide per run. Deaths remember.');
+      say('Move N/W/S/E. Type: look, listen, map, take, use, talk, examine, inventory, open, read, hide, fight, flee, status. When music shifts: fight, flee, or hide. Deaths return you to the TV glow. Scare without pictures. The TV is your guide. You are only safe under the glow. Hall may stretch. One true hide per run. Deaths remember.');
     } else if (s === 'map') {
-      say('TV glow —east→ Hall —east→ Mirror; Hall north→ Kitchen; Hall south→ Yard (marked); Hall down→ Basement (seen); TV north→ Bedroom.');
+      say('TV is the guide — look/listen/talk under the glow for objectives. TV glow —east→ Hall —east→ Mirror; Hall north→ Kitchen; Hall south→ Yard (marked); Hall down→ Basement (seen); TV north→ Bedroom.');
     } else if (s === 'status') {
       say('Nerve ' + hp + ' · score ' + score + ' · seen/marked/named ' + [flags.seen,flags.marked,flags.named].map(x=>x?'yes':'no').join('/'));
     } else if (s === 'inventory' || s === 'i' || s === 'inv') {
       say('Carrying: ' + (inv.length ? inv.join(', ') : 'nothing'));
     } else if (s === 'listen') {
       const L = {
-        tv: 'White noise with a rhythm that is almost a word.',
+        tv: 'White noise with a rhythm that is almost a word. Stand here. It will instruct.',
         hall: 'Static from the west. A footstep that does not finish.',
         mirror: 'Water deciding whether to drip.',
         kitchen: 'Fridge song under the TV song.',
@@ -668,10 +735,11 @@
         bedroom: 'Closet breath. Mattress-shaped silence.'
       };
       say(L[roomId] || 'The house listens harder.');
+      if (roomId === 'tv') tvGuide(false);
     } else if (s === 'look' || s === 'l' || s === 'look around') {
       say(ROOMS[roomId].desc);
       if (roomId === 'mirror') { flags.seen = true; addScore(5); say('The glass notices you early.', 'ok'); }
-      if (roomId === 'tv') say('The glow is the only permission the dark gives.');
+      if (roomId === 'tv') { say('The glow is the only permission the dark gives.'); tvGuide(true); }
     } else if (s === 'look back' || s === 'turn around') {
       if (roomId === 'hall') die('You look back. The hall grows through you.');
       else say('Only the suggestion of being followed.');
@@ -727,7 +795,8 @@
         flags.named = true; flags.seen = true; addScore(20);
         say('You speak a name. The mirror owns it better.', 'ok');
       } else if (roomId === 'tv') {
-        say('You talk to the glow. It answers in snow.');
+        say('You talk to the glow. It answers in snow — then in orders.');
+        tvGuide(true);
       } else if (roomId === 'basement') {
         say('Your voice returns half a second late — as if from under water.');
       } else if (roomId === 'yard' && (s.includes('dog') || s.includes('here') || s.includes('hello'))) {
@@ -923,7 +992,7 @@
   setTimeout(resizeFx, 50);
   requestAnimationFrame(fxLoop);
 
-  say('Under the Glow v0.9 — deaths return to the TV.', 'sys');
+  say('Under the Glow v0.10 — the TV is the guide. Look at it. Do not stay away too long.', 'sys');
   if (isFounder) say('FOUNDER RELEASE — pay waived. Tap the blue sound bar if silent.', 'ok');
   else say('Tap the sound bar, then type help.', 'sys');
   render();
