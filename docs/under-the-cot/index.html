@@ -152,15 +152,37 @@
     }
     #danger-bar.on { display: block; animation: blink 0.5s step-end infinite; }
     @keyframes blink { 50% { opacity: 0.4; } }
+  
+    #fx-canvas {
+      position: absolute; inset: 0; z-index: 1;
+      width: 100%; height: 100%;
+      pointer-events: none; opacity: 0.55;
+      mix-blend-mode: screen;
+    }
+    #view.tv-room #fx-canvas { opacity: 0.7; }
+    #view.fx-off #fx-canvas { display: none; }
+    #view.tv-room #backdrop {
+      box-shadow: inset 0 0 60px rgba(80,160,255,0.15);
+    }
+    #fx-toggle {
+      position: absolute; top: 8px; right: 10px; z-index: 7;
+      font-family: "IBM Plex Mono", monospace; font-size: 9px;
+      letter-spacing: 0.1em; color: var(--mute);
+      background: rgba(0,0,0,0.4); border: 1px solid var(--line);
+      border-radius: 4px; padding: 4px 6px; cursor: pointer;
+    }
+
   </style>
 </head>
 <body>
   <header>
-    <span>Under the Glow · v0.7</span>
+    <span>Under the Glow · v0.8</span>
     <span id="score">0</span>
   </header>
   <div id="view">
     <div id="backdrop"></div>
+    <canvas id="fx-canvas"></canvas>
+    <button type="button" id="fx-toggle">FX ON</button>
     <div id="dust"></div>
     <div id="grain"></div>
     <div id="vignette"></div>
@@ -391,7 +413,7 @@
     if (danger || dead || ended) return;
     if (!musicStarted) return;
     danger = true;
-    setMusicPattern('danger');
+    setMusicPattern('danger'); setFxMode('danger');
     document.getElementById('danger-bar').classList.add('on');
     say('The tune warps. Something uses the doorway.', 'bad');
     say('FIGHT · FLEE · HIDE', 'sys');
@@ -404,7 +426,7 @@
   function endDanger(msg) {
     danger = false;
     clearTimeout(entityTimer);
-    setMusicPattern('normal');
+    setMusicPattern('normal'); setFxMode('normal');
     document.getElementById('danger-bar').classList.remove('on');
     if (msg) say(msg, 'ok');
   }
@@ -454,7 +476,7 @@
     danger = false;
     clearTimeout(entityTimer);
     document.getElementById('danger-bar').classList.remove('on');
-    setMusicPattern('death');
+    setMusicPattern('death'); setFxMode('death');
     const fmv = document.getElementById('fmv');
     fmv.querySelector('.title').textContent = 'DEATH · 5 SECONDS';
     fmv.querySelector('.art').textContent =
@@ -472,7 +494,7 @@
     examineMemory.letter = 'The letter already tried to be your name once.';
     setTimeout(() => {
       fmv.classList.remove('show');
-      setMusicPattern('normal');
+      setMusicPattern('normal'); setFxMode('normal');
       dead = false; inv = []; hp = 3; ended = false;
       flags = { seen: false, marked: false, named: false }; hallStretch = 0; mercyLeft = 1; hideCount = 0; fightCount = 0;
       enter('tv');
@@ -512,7 +534,7 @@
     else if (via === 'n') { px = 50; py = 80; }
     else if (via === 's') { px = 50; py = 26; }
     else { px = 50; py = 72; }
-    say('— ' + ROOMS[id].name + ' —', 'sys');
+    say('— ' + ROOMS[id].name + ' —', 'sys'); if (typeof resizeFx === 'function') resizeFx();
     resetDwell();
     render();
   }
@@ -720,7 +742,7 @@
 
   function bootAudio() {
     if (ensureAudio()) {
-      setMusicPattern('normal');
+      setMusicPattern('normal'); setFxMode('normal');
       scheduleDanger();
       say('The glow hums. Chip-static online.', 'ok');
     }
@@ -752,7 +774,101 @@
     document.body.removeEventListener('touchstart', once);
   }, { passive: true });
 
-  say('Under the Glow v0.7 — deaths return to the TV.', 'sys');
+  
+  // --- In-engine FX (Phase A+B) ---
+  const fxCanvas = document.getElementById('fx-canvas');
+  const fxCtx = fxCanvas ? fxCanvas.getContext('2d') : null;
+  let fxOn = localStorage.getItem('utg_fx') !== '0';
+  let fxMode = 'normal'; // normal | danger | death
+  let fxDeathT = 0;
+  let asciiFlicker = 0;
+
+  function resizeFx() {
+    if (!fxCanvas || !viewEl) return;
+    const r = viewEl.getBoundingClientRect();
+    fxCanvas.width = Math.max(160, Math.floor(r.width));
+    fxCanvas.height = Math.max(100, Math.floor(r.height));
+  }
+  function setFxMode(m) { fxMode = m; if (m === 'death') fxDeathT = 0; }
+  function drawFx() {
+    if (!fxCtx || !fxCanvas || !fxOn) return;
+    const w = fxCanvas.width, h = fxCanvas.height;
+    fxCtx.clearRect(0, 0, w, h);
+    if (fxMode === 'death') {
+      fxDeathT++;
+      fxCtx.fillStyle = '#000';
+      fxCtx.fillRect(0, 0, w, h);
+      const flash = (fxDeathT % 8) < 2;
+      fxCtx.fillStyle = flash ? 'rgba(180,40,60,0.35)' : 'rgba(20,40,80,0.5)';
+      fxCtx.fillRect(0, 0, w, h);
+      // scan bars
+      fxCtx.fillStyle = 'rgba(255,255,255,0.06)';
+      for (let y = (fxDeathT * 3) % 12; y < h; y += 12) fxCtx.fillRect(0, y, w, 2);
+      // abstract cut
+      fxCtx.strokeStyle = 'rgba(220,200,200,0.4)';
+      fxCtx.lineWidth = 2;
+      fxCtx.beginPath();
+      fxCtx.moveTo(w * 0.2, h * 0.3);
+      fxCtx.lineTo(w * 0.8, h * 0.7);
+      fxCtx.stroke();
+      return;
+    }
+    const img = fxCtx.createImageData(w, h);
+    const d = img.data;
+    const danger = fxMode === 'danger';
+    const tv = roomId === 'tv';
+    for (let i = 0; i < d.length; i += 4) {
+      const n = Math.random();
+      let v = n * (tv ? 55 : 28);
+      if (danger) v = n * 90;
+      d[i] = danger ? v : (tv ? v * 0.7 : v * 0.4);
+      d[i+1] = danger ? v * 0.3 : (tv ? v * 0.85 : v * 0.4);
+      d[i+2] = danger ? v * 0.3 : (tv ? v + 20 : v * 0.5);
+      d[i+3] = danger ? 50 : (tv ? 40 : 22);
+    }
+    fxCtx.putImageData(img, 0, 0);
+    // scanlines
+    fxCtx.fillStyle = 'rgba(0,0,0,0.12)';
+    for (let y = 0; y < h; y += 3) fxCtx.fillRect(0, y, w, 1);
+    if (tv) {
+      const g = fxCtx.createRadialGradient(w/2, h*0.35, 10, w/2, h*0.4, w*0.45);
+      g.addColorStop(0, 'rgba(120,180,255,0.12)');
+      g.addColorStop(1, 'rgba(0,0,0,0)');
+      fxCtx.fillStyle = g;
+      fxCtx.fillRect(0, 0, w, h);
+    }
+  }
+  function fxLoop() {
+    drawFx();
+    // ASCII flicker on TV
+    asciiFlicker++;
+    if (roomId === 'tv' && artEl && asciiFlicker % 8 === 0) {
+      artEl.style.opacity = (0.4 + Math.random() * 0.35).toFixed(2);
+    } else if (artEl && roomId !== 'tv') {
+      artEl.style.opacity = '1';
+    }
+    requestAnimationFrame(fxLoop);
+  }
+  window.addEventListener('resize', resizeFx);
+  const fxToggle = document.getElementById('fx-toggle');
+  function applyFxToggle() {
+    if (!viewEl) return;
+    viewEl.classList.toggle('fx-off', !fxOn);
+    if (fxToggle) fxToggle.textContent = fxOn ? 'FX ON' : 'FX OFF';
+  }
+  if (fxToggle) {
+    fxToggle.onclick = (e) => {
+      e.stopPropagation();
+      fxOn = !fxOn;
+      localStorage.setItem('utg_fx', fxOn ? '1' : '0');
+      applyFxToggle();
+    };
+  }
+  applyFxToggle();
+  setTimeout(resizeFx, 50);
+  requestAnimationFrame(fxLoop);
+
+  say('Under the Glow v0.8 — deaths return to the TV.', 'sys');
   if (isFounder) say('FOUNDER RELEASE — pay waived. Tap the blue sound bar if silent.', 'ok');
   else say('Tap the sound bar, then type help.', 'sys');
   render();
