@@ -437,6 +437,8 @@
 
     if (s === 'inventory' || s === 'i' || s === 'inv') {
       say('Carrying: ' + (inv.length ? inv.join(', ') : 'nothing') + '. Try examine <item>.');
+    } else if (s === 'map') {
+      say('Map: Under the Cot — east → Hall — east → Mirror; Hall north → Kitchen; Hall south → Yard (needs marked).');
     } else if (s === 'listen') {
       const listens = {
         cot: 'Dust settling. Somewhere above, a mattress that is too light.',
@@ -447,7 +449,7 @@
       };
       say(listens[roomId] || 'The house listens harder than you do.');
     } else if (s === 'help') {
-      say('Move: arrows or N/W/S/E. Type: look, listen, take, use, talk, examine, inventory, open, read, hide, look back, status, help.');
+      say('Move: arrows or N/W/S/E. Type: look, listen, map, take, use, talk, examine, inventory, open, read, hide, look back, status, help.');
     } else if (s === 'status') {
       say('Nerve ' + hp + ' · score ' + score + ' · seen/marked/named ' + [flags.seen,flags.marked,flags.named].map(x=>x?'yes':'no').join('/'));
     } else if (s === 'look' || s === 'look around' || s === 'l') {
