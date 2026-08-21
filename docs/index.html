@@ -124,11 +124,43 @@
       background: #1a1630; border: 1px solid #3a3460; color: var(--ink);
       padding: 0 14px; border-radius: 6px; font-family: "IBM Plex Mono", monospace; font-size: 12px;
     }
+  
+    #fmv {
+      display: none; position: fixed; inset: 0; z-index: 200;
+      background: #000; color: #e4dcd2; flex-direction: column;
+      align-items: center; justify-content: center;
+      font-family: "IBM Plex Mono", monospace;
+    }
+    #fmv.show { display: flex; }
+    #fmv .frame {
+      width: min(92vw, 420px); aspect-ratio: 4/3;
+      border: 2px solid #3a3450; background: #0a0810;
+      display: flex; align-items: center; justify-content: center;
+      flex-direction: column; padding: 16px; text-align: center;
+      box-shadow: 0 0 40px rgba(180,40,60,0.25);
+      animation: fmvPulse 0.8s ease infinite alternate;
+    }
+    @keyframes fmvPulse {
+      from { filter: brightness(0.85); }
+      to { filter: brightness(1.1); }
+    }
+    #fmv .title { color: #d06070; font-size: 13px; letter-spacing: 0.2em; margin-bottom: 12px; }
+    #fmv .art { white-space: pre; font-size: 11px; line-height: 1.2; color: #8a8098; margin-bottom: 12px; }
+    #fmv .line { font-size: 13px; line-height: 1.5; max-width: 32ch; }
+    #danger-bar {
+      display: none; flex-shrink: 0; padding: 6px 12px;
+      background: #1a0810; border-top: 1px solid #5a2030;
+      font-family: "IBM Plex Mono", monospace; font-size: 11px; color: #d06070;
+      letter-spacing: 0.08em;
+    }
+    #danger-bar.on { display: block; animation: blink 0.5s step-end infinite; }
+    @keyframes blink { 50% { opacity: 0.4; } }
+
   </style>
 </head>
 <body>
   <header>
-    <span>Under the Cot · v0.3</span>
+    <span>Under the Cot · v0.4</span>
     <span id="score">0</span>
   </header>
   <div id="view">
@@ -144,6 +176,8 @@
     <div class="exit-hint" id="hint-w" style="left:8px;top:50%"></div>
     <div class="exit-hint" id="hint-e" style="right:8px;top:50%"></div>
   </div>
+  <div id="fmv"><div class="frame"><div class="title"></div><div class="art"></div><div class="line"></div></div></div>
+  <div id="danger-bar">MUSIC SHIFT — FIGHT / FLEE / HIDE</div>
   <div class="founder" id="founder"></div>
   <div class="inv" id="inv">Carrying: nothing</div>
   <div id="log"></div>
@@ -246,6 +280,129 @@
   let flags = { seen: false, marked: false, named: false };
   let ended = false;
 
+  // --- Chip ambience + danger encounters ---
+  let audioCtx = null, osc = null, gain = null, lfo = null;
+  let musicOn = false;
+  let danger = false;
+  let dangerTimer = null;
+  let entityTimer = null;
+  let baseFreq = 110;
+
+  function ensureAudio() {
+    if (audioCtx) return;
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    gain = audioCtx.createGain();
+    gain.gain.value = 0.04;
+    gain.connect(audioCtx.destination);
+    osc = audioCtx.createOscillator();
+    osc.type = 'square';
+    osc.frequency.value = baseFreq;
+    lfo = audioCtx.createOscillator();
+    lfo.type = 'square';
+    lfo.frequency.value = 2.5;
+    const lfoGain = audioCtx.createGain();
+    lfoGain.gain.value = 4;
+    lfo.connect(lfoGain);
+    lfoGain.connect(osc.frequency);
+    osc.connect(gain);
+    osc.start();
+    lfo.start();
+    musicOn = true;
+  }
+
+  function setMusicPattern(mode) {
+    if (!osc || !lfo) return;
+    if (mode === 'normal') {
+      baseFreq = 110;
+      osc.type = 'square';
+      osc.frequency.setValueAtTime(110, audioCtx.currentTime);
+      lfo.frequency.setValueAtTime(2.5, audioCtx.currentTime);
+      if (gain) gain.gain.setValueAtTime(0.035, audioCtx.currentTime);
+    } else if (mode === 'danger') {
+      baseFreq = 165;
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(165, audioCtx.currentTime);
+      lfo.frequency.setValueAtTime(7, audioCtx.currentTime);
+      if (gain) gain.gain.setValueAtTime(0.06, audioCtx.currentTime);
+    } else if (mode === 'death') {
+      osc.frequency.setValueAtTime(55, audioCtx.currentTime);
+      lfo.frequency.setValueAtTime(1, audioCtx.currentTime);
+      if (gain) gain.gain.setValueAtTime(0.08, audioCtx.currentTime);
+    }
+  }
+
+  function startDanger() {
+    if (danger || dead || ended) return;
+    danger = true;
+    setMusicPattern('danger');
+    const bar = document.getElementById('danger-bar');
+    if (bar) bar.classList.add('on');
+    say('The tune warps. Something is using the doorway.', 'bad');
+    say('FIGHT · FLEE · HIDE — decide.', 'sys');
+    clearTimeout(entityTimer);
+    entityTimer = setTimeout(() => {
+      if (danger) {
+        playDeathFMV('The entity enters. You were still visible.',
+`    ╔══════╗
+    ║ ▓▓▓▓ ║
+    ║ ☉  ☉ ║
+    ║  ▬▬  ║
+    ╚══════╝
+   it fits the frame`);
+      }
+    }, 4500);
+  }
+
+  function endDanger(successMsg) {
+    danger = false;
+    clearTimeout(entityTimer);
+    setMusicPattern('normal');
+    const bar = document.getElementById('danger-bar');
+    if (bar) bar.classList.remove('on');
+    if (successMsg) say(successMsg, 'ok');
+  }
+
+  function scheduleDanger() {
+    clearTimeout(dangerTimer);
+    const wait = 18000 + Math.random() * 25000;
+    dangerTimer = setTimeout(() => {
+      startDanger();
+      scheduleDanger();
+    }, wait);
+  }
+
+  const DEATHS = [
+    { art: `  ╱╲  flash  ╱╲\n ▓▓▓ lair ▓▓▓\n  you miss the cue`, line: 'In the tradition of the old death reels: one wrong choice.' },
+    { art: `   ···\n  (  ·  )\n   ═══\n  empty cot`, line: 'The house files you under gone.' },
+    { art: `  mirror\n  cracks\n  into\n  teeth`, line: 'Reflection arrives without you.' },
+    { art: `  hallway\n  folds\n  once`, line: 'Looking back was the donation.' },
+  ];
+
+  function playDeathFMV(reason, artOverride) {
+    danger = false;
+    clearTimeout(entityTimer);
+    const bar = document.getElementById('danger-bar');
+    if (bar) bar.classList.remove('on');
+    setMusicPattern('death');
+    const pick = DEATHS[Math.floor(Math.random() * DEATHS.length)];
+    const fmv = document.getElementById('fmv');
+    fmv.querySelector('.title').textContent = 'DEATH · 5 SECONDS';
+    fmv.querySelector('.art').textContent = artOverride || pick.art;
+    fmv.querySelector('.line').textContent = reason + ' ' + pick.line;
+    fmv.classList.add('show');
+    dead = true;
+    setTimeout(() => {
+      fmv.classList.remove('show');
+      setMusicPattern('normal');
+      dead = false; inv = []; hp = 3; ended = false;
+      flags = { seen: false, marked: false, named: false };
+      enter('cot');
+      say('You wake under the cot. The chip tune has already started over.', 'sys');
+      say('Dust. Again.', 'sys');
+    }, 5000);
+  }
+
+
   const logEl = document.getElementById('log');
   const artEl = document.getElementById('scene-art');
   const labelEl = document.getElementById('room-label');
@@ -326,15 +483,7 @@
   }
 
   function die(msg) {
-    dead = true;
-    say(msg, 'bad');
-    say('You wake under the cot. The house calls this mercy.', 'sys');
-    setTimeout(() => {
-      dead = false; inv = []; hp = 3; ended = false;
-      flags = { seen: false, marked: false, named: false };
-      enter('cot');
-      say('Dust. Again. Type help if the dark thickens.', 'sys');
-    }, 700);
+    playDeathFMV(msg);
   }
 
   function gate() {
@@ -355,8 +504,29 @@
     moves++;
     say('> ' + s, 'you');
 
-    if (s === 'help') {
-      say('Move: arrows or N/W/S/E. Type: look, listen, map, take, use, talk, examine, inventory, open, read, hide, look back, status, help.');
+    if (s === 'fight' || s === 'flee' || s === 'hide' || s === 'run') {
+      if (!danger) { say('Nothing to fight or flee yet. The tune is still polite.'); }
+      else if (s === 'hide' || s.startsWith('hide')) {
+        endDanger('You fold into the furniture. The entity passes like a bad idea.');
+        addScore(8);
+      } else if (s === 'flee' || s === 'run') {
+        endDanger('You take a door without choosing it. Breath tastes like static.');
+        tryExit(['n','s','e','w'][Math.floor(Math.random()*4)] || 'w');
+        addScore(5);
+      } else if (s === 'fight') {
+        if (Math.random() < 0.35) {
+          endDanger('You swing at the shape. It is surprised. So are you.');
+          addScore(12);
+        } else {
+          playDeathFMV('You fight. The entity is not a fair opponent.',
+`   ╱ fists ╲
+  ╳  noise  ╳
+   the frame
+   wins`);
+        }
+      }
+    } else if (s === 'help') {
+      say('Move: arrows or N/W/S/E. Type: look, listen, map, take, use, talk, examine, inventory, open, read, hide, fight, flee, look back, status, help. When the music shifts: fight, flee, or hide.');
     } else if (s === 'map') {
       say('Map: Cot —east→ Hall —east→ Mirror; Hall —north→ Kitchen; Hall —south→ Yard (needs marked). Goal: seen, marked, named.');
     } else if (s === 'status') {
@@ -459,8 +629,9 @@
     render();
   }
 
-  document.getElementById('go').onclick = () => { handle(cmd.value); cmd.value = ''; cmd.focus(); };
-  cmd.addEventListener('keydown', e => { if (e.key === 'Enter') { handle(cmd.value); cmd.value = ''; } });
+  document.getElementById('go').onclick = () => { ensureAudio(); handle(cmd.value); cmd.value = ''; cmd.focus(); };
+  cmd.addEventListener('focus', () => { ensureAudio(); scheduleDanger(); }, { once: true });
+  cmd.addEventListener('keydown', e => { if (e.key === 'Enter') { ensureAudio(); handle(cmd.value); cmd.value = ''; } });
   document.querySelectorAll('.pad button[data-dir]').forEach(b => b.addEventListener('click', () => walk(b.getAttribute('data-dir'))));
   window.addEventListener('keydown', e => {
     if (document.activeElement === cmd) return;
@@ -470,7 +641,7 @@
     if (e.key === 'ArrowRight') { e.preventDefault(); walk('e'); }
   });
 
-  say('Under the Cot v0.3 — fully playable without external art.', 'sys');
+  say('Under the Cot v0.4 — chip danger + death reels without external art.', 'sys');
   say('ASCII placeholders stand in until assets plug into ART{}.', 'sys');
   if (isFounder) say('FOUNDER RELEASE — pay waived. Playtest and send friction notes.', 'ok');
   else say('Type help. Move with N/W/S/E. Goal: seen, marked, named.', 'sys');
