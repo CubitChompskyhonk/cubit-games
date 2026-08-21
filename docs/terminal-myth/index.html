@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <title>TERMINAL MYTH — Cubit Games</title>
+  <meta name="theme-color" content="#020302" />
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: #020302; color: #3dff6a; font-family: "Courier New", monospace; min-height: 100dvh; padding: 14px; }
+    header { font-size: 11px; color: #1f7a3a; margin-bottom: 10px; letter-spacing: 1px; }
+    #out { white-space: pre-wrap; font-size: 13px; line-height: 1.5; min-height: 55vh; margin-bottom: 12px; }
+    .row { display: flex; gap: 8px; }
+    #cmd { flex: 1; background: #000; border: 1px solid #1a5c2e; color: #3dff6a; padding: 12px; font-family: inherit; font-size: 14px; outline: none; }
+    #go { background: #0a2a12; border: 1px solid #3dff6a; color: #3dff6a; padding: 12px 14px; font-family: inherit; cursor: pointer; }
+    .paywall {
+      display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.92);
+      align-items: center; justify-content: center; padding: 20px; z-index: 20;
+    }
+    .paywall.show { display: flex; }
+    .card {
+      border: 1px solid #3dff6a; padding: 20px; max-width: 340px; width: 100%; background: #030803;
+    }
+    .card h1 { font-size: 14px; margin-bottom: 10px; }
+    .card p { font-size: 12px; color: #2a9a4a; line-height: 1.6; margin-bottom: 14px; }
+    .card a, .card button {
+      display: block; width: 100%; text-align: center; padding: 12px;
+      background: #3dff6a; color: #000; text-decoration: none; border: none;
+      font-family: inherit; font-size: 12px; font-weight: bold; cursor: pointer; margin-bottom: 8px;
+    }
+    .muted { font-size: 10px; color: #1f7a3a; text-align: center; }
+  </style>
+</head>
+<body>
+  <header>CUBIT GAMES · TERMINAL MYTH · ONE-TIME UNLOCK</header>
+  <div id="out"></div>
+  <div class="row">
+    <input id="cmd" placeholder="type a verb..." autocomplete="off" />
+    <button id="go">ENTER</button>
+  </div>
+  <div class="paywall" id="paywall">
+    <div class="card">
+      <h1>UNLOCK THE MYTH</h1>
+      <p>One-time payment. No ads. No in-app purchases. Own the descent.</p>
+      <a id="buy" href="https://buy.stripe.com/28EcN4fPZ64B4xagNP6kg04" target="_blank" rel="noopener">PAY TO CONTINUE</a>
+      <p class="muted">After payment you receive full access. Founder build uses separate free channel.</p>
+    </div>
+  </div>
+  <script>
+    const FOUNDERS = new Set(['founder','cubit-founder','customer-1']);
+    const params = new URLSearchParams(location.search);
+    const isFounder = params.get('access') === 'founder' || params.get('key') === 'customer1' || localStorage.getItem('tm_founder') === '1';
+    const unlocked = isFounder || localStorage.getItem('tm_unlocked') === '1' || params.get('paid') === '1';
+    if (isFounder) localStorage.setItem('tm_founder', '1');
+    if (params.get('paid') === '1') localStorage.setItem('tm_unlocked', '1');
+
+    const out = document.getElementById('out');
+    const cmd = document.getElementById('cmd');
+    let depth = 0, hp = 3, key = false, moves = 0;
+    function print(t) { out.textContent += t + '\n'; out.scrollTop = out.scrollHeight; }
+    function gate() {
+      if (unlocked || isFounder) return false;
+      if (moves >= 3) { document.getElementById('paywall').classList.add('show'); return true; }
+      return false;
+    }
+    function boot() {
+      print('TERMINAL MYTH v0.1 — Cubit Games');
+      if (isFounder) print('[FOUNDER CHANNEL] pay waived · customer #1');
+      print('A tiny descent. Type: look, take, go, use, help, status');
+      print('----------------------------------------');
+      print('You boot into a black prompt. Somewhere below: a myth.');
+      print('');
+    }
+    function handle(raw) {
+      if (gate()) return;
+      const s = (raw || '').trim().toLowerCase();
+      if (!s) return;
+      moves++;
+      print('> ' + s);
+      if (s === 'help') print('verbs: look | take | go | use | status | help');
+      else if (s === 'status') print('depth ' + depth + ' | hp ' + hp + ' | key ' + (key ? 'yes' : 'no') + (isFounder ? ' | FOUNDER' : ''));
+      else if (s === 'look') {
+        if (depth === 0) print('A cursor blinks. A hatch is scratched into the floorboards of the void.');
+        else if (depth === 1) print('A service corridor of dead servers. Something ticks that should not tick.');
+        else if (depth === 2) print('A door with no handle. Only a slot the size of a bad decision.');
+        else print('You found the myth: it was the loop. You can leave whenever you want.');
+      } else if (s === 'go') {
+        if (depth === 0) { depth = 1; print('You open the hatch. Heat rises.'); }
+        else if (depth === 1) { depth = 2; print('You follow the tick.'); }
+        else if (depth === 2 && key) { depth = 3; print('THE MYTH ACCEPTS YOU. You win this tiny forever.'); }
+        else if (depth === 2) print('The door refuses. Something is missing.');
+        else print('There is nowhere deeper.');
+      } else if (s === 'take') {
+        if (depth === 1 && !key) { key = true; print('You take a bent key made of password hashes.'); }
+        else if (key) print('Hands full of myth already.');
+        else print('Nothing willing to be taken.');
+      } else if (s === 'use') {
+        if (depth === 2 && key) { depth = 3; print('Key bites the slot. Light without color. YOU WIN.'); }
+        else print('Use what, on what? The void is not helpful.');
+      } else {
+        hp -= 1;
+        print('The myth does not parse that. HP ' + hp);
+        if (hp <= 0) print('You are disconnected. Refresh to reincarnate.');
+      }
+      print('');
+      gate();
+    }
+    document.getElementById('go').onclick = () => { handle(cmd.value); cmd.value = ''; cmd.focus(); };
+    cmd.addEventListener('keydown', e => { if (e.key === 'Enter') { handle(cmd.value); cmd.value = ''; } });
+    boot();
+    cmd.focus();
+  </script>
+</body>
+</html>
