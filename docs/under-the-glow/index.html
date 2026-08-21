@@ -105,8 +105,15 @@
     }
     #audio-unlock.show { display: block; }
     .pad {
-      display: grid; grid-template-columns: 44px 44px 44px; grid-template-rows: 34px 34px;
-      gap: 5px; padding: 6px 10px 4px; justify-content: center; flex-shrink: 0;
+      display: grid; grid-template-columns: 48px 48px 48px; grid-template-rows: 40px 40px;
+      gap: 8px; padding: 10px 10px 12px; justify-content: center; flex-shrink: 0;
+      border-top: 1px solid var(--line);
+      background: #0c0a12;
+      margin-bottom: 0;
+    }
+    .pad.pad-safe { /* direction cluster raised above command bar */ }
+    .bar {
+      padding-top: 12px !important;
     }
     .pad button {
       background: #141022; border: 1px solid #2a2440; color: var(--mute);
@@ -114,7 +121,7 @@
     }
     .pad .blank { visibility: hidden; }
     .bar {
-      display: flex; gap: 8px; padding: 8px 10px calc(10px + env(safe-area-inset-bottom));
+      display: flex; gap: 8px; padding: 14px 10px calc(12px + env(safe-area-inset-bottom)); margin-top: 2px;
       border-top: 1px solid var(--line); flex-shrink: 0; background: #0a0810;
     }
     #cmd {
@@ -201,7 +208,7 @@
 </head>
 <body>
   <header>
-    <span>Under the Glow · v0.10</span>
+    <span>Under the Glow · v0.11</span>
     <span id="score">0</span>
   </header>
   <div id="view">
@@ -225,7 +232,7 @@
   <div id="audio-unlock" class="show">TAP HERE TO START THE GLOW (sound on)</div>
   <div class="inv" id="inv">Carrying: nothing</div>
   <div id="log"></div>
-  <div class="pad">
+  <div class="pad pad-safe">
     <button class="blank"></button>
     <button type="button" data-dir="n">N</button>
     <button class="blank"></button>
@@ -233,6 +240,7 @@
     <button type="button" data-dir="s">S</button>
     <button type="button" data-dir="e">E</button>
   </div>
+  <!-- pad-gap-fix -->
   <div class="bar">
     <input id="cmd" placeholder="What do you do?" autocomplete="off" enterkeyhint="done" />
     <button type="button" id="go">Do</button>
@@ -447,7 +455,7 @@
     clearTimeout(entityTimer);
     entityTimer = setTimeout(() => {
       if (danger) playDeathFMV('The entity enters while you hesitate.');
-    }, 4500);
+    }, 9000);
   }
 
   function endDanger(msg) {
@@ -992,7 +1000,7 @@
   setTimeout(resizeFx, 50);
   requestAnimationFrame(fxLoop);
 
-  say('Under the Glow v0.10 — the TV is the guide. Look at it. Do not stay away too long.', 'sys');
+  say('Under the Glow v0.11 — the TV is the guide. Look at it. Do not stay away too long.', 'sys');
   if (isFounder) say('FOUNDER RELEASE — pay waived. Tap the blue sound bar if silent.', 'ok');
   else say('Tap the sound bar, then type help.', 'sys');
   render();
