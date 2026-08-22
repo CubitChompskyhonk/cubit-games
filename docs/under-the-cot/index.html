@@ -517,6 +517,29 @@
     if (flags.seen) return 1;
     return 0;
   }
+  
+  function saveStatus() {
+    try {
+      localStorage.setItem('utg_save', JSON.stringify({
+        flags, inv, hideCount, fightCount, deathCount, examineMemory, score
+      }));
+    } catch (e) {}
+  }
+  function loadStatus() {
+    try {
+      const raw = localStorage.getItem('utg_save');
+      if (!raw) return;
+      const s = JSON.parse(raw);
+      if (s.flags) flags = s.flags;
+      if (Array.isArray(s.inv)) inv = s.inv;
+      if (typeof s.hideCount === 'number') hideCount = s.hideCount;
+      if (typeof s.fightCount === 'number') fightCount = s.fightCount;
+      if (typeof s.deathCount === 'number') deathCount = s.deathCount;
+      if (s.examineMemory) examineMemory = s.examineMemory;
+      if (typeof s.score === 'number') { score = s.score; scoreEl.textContent = String(score); }
+    } catch (e) {}
+  }
+
   function tvGuide(force) {
     const stage = questStage();
     const lines = [
@@ -597,16 +620,32 @@
     fmv.classList.add('show');
     dead = true;
     deathCount++;
+    saveStatus();
     examineMemory.remote = 'The remote remembers your thumb from a previous glow.';
     examineMemory.sock = 'The sock is warm with someone else\'s wait.';
     examineMemory.letter = 'The letter already tried to be your name once.';
     setTimeout(() => {
       fmv.classList.remove('show');
       setMusicPattern('normal'); setFxMode('normal'); if (viewEl) viewEl.classList.remove('danger-roll');
-      dead = false; inv = []; hp = 3; ended = false;
-      flags = { seen: false, marked: false, named: false }; hallStretch = 0; mercyLeft = 1; hideCount = 0; fightCount = 0; hideStreak = 0;
+      // Persist status after death: flags, inventory, quest memory, ending stats
+      dead = false;
+      hp = 3;
+      hallStretch = 0;
+      mercyLeft = 1;
+      hideStreak = 0;
+      awayTime = 0;
+      danger = false;
+      // inv, flags, examineMemory, hideCount, fightCount, deathCount, lastGuideStage kept
       enter('tv');
       say('You are under the glow again. Static paints your hands.', 'sys');
+      say('The house did not forget what you already did.', 'sys');
+      const parts = [];
+      if (flags.seen) parts.push('seen');
+      if (flags.marked) parts.push('marked');
+      if (flags.named) parts.push('named');
+      if (inv.length) say('Still carrying: ' + inv.join(', ') + '.', 'ok');
+      if (parts.length) say('Still ' + parts.join(', ') + '.', 'ok');
+      else say('Nothing of you is filed yet — only the glow remains.', 'sys');
     }, 5000);
   }
 
@@ -761,7 +800,7 @@
         else playDeathFMV('You fight. The entity is not fair.');
       }
     } else if (s === 'help') {
-      say('Move N/W/S/E. Type: look, listen, map, take, use, talk, examine, inventory, open, read, hide, fight, flee, status. When music shifts: fight, flee, or hide. Deaths return you to the TV glow. Scare without pictures. The TV is your guide. You are only safe under the glow. Hall may stretch. One true hide per run. Deaths remember.');
+      say('Move N/W/S/E. Type: look, listen, map, take, use, talk, examine, inventory, open, read, hide, fight, flee, status. When music shifts: fight, flee, or hide. Deaths return you to the TV glow. Scare without pictures. The TV is your guide. You are only safe under the glow. Hall may stretch. One true hide per run. Deaths return you to the glow but keep your status.');
     } else if (s === 'map') {
       say('TV is the guide — look/listen/talk under the glow for objectives. TV glow —east→ Hall —east→ Mirror; Hall north→ Kitchen; Hall south→ Yard (marked); Hall down→ Basement (seen); TV north→ Bedroom.');
     } else if (s === 'status') {
@@ -863,6 +902,7 @@
       if (hp <= 0) die('Fear takes a small, silly trophy.');
     }
 
+    saveStatus();
     if (!ended && flags.seen && flags.marked && flags.named) {
       ended = true;
       say('You are seen, marked, and named.', 'ok');
@@ -874,6 +914,7 @@
         say('Then only carpet. For now.', 'ok');
       }
       addScore(50);
+      saveStatus();
     }
     render();
   }
@@ -1036,7 +1077,8 @@
   setTimeout(resizeFx, 50);
   requestAnimationFrame(fxLoop);
 
-  say('Under the Glow v0.12 — the TV is the guide. Look at it. Do not stay away too long.', 'sys');
+  say('Under the Glow v0.13 — status persists after death. The house does not forget.', 'sys');
+  loadStatus();
   if (isFounder) say('FOUNDER RELEASE — pay waived. Tap the blue sound bar if silent.', 'ok');
   else say('Tap the sound bar, then type help.', 'sys');
   render();
