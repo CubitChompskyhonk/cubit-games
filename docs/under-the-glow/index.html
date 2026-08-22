@@ -186,6 +186,12 @@
     #fmv .title { color: #d06070; font-size: 13px; letter-spacing: 0.2em; margin-bottom: 12px; }
     #fmv .art { white-space: pre; font-size: 11px; line-height: 1.2; color: #8a8098; margin-bottom: 12px; }
     #fmv .line { font-size: 13px; line-height: 1.5; max-width: 32ch; }
+    #fmv video {
+      width: min(92vw, 420px); max-height: 55dvh;
+      background: #000; border: 2px solid #3a3450;
+      margin-bottom: 10px;
+    }
+    #fmv .frame.has-video .art { display: none; }
     #danger-bar {
       display: none; flex-shrink: 0; padding: 6px 12px;
       background: #1a0810; border-top: 1px solid #5a2030;
@@ -212,7 +218,7 @@
 </head>
 <body>
   <header>
-    <span>Under the Glow · v0.16</span>
+    <span>Under the Glow · v0.17</span>
     <span id="score">0</span>
   </header>
   <div id="view">
@@ -231,7 +237,12 @@
     <div class="exit-hint" id="hint-w" style="left:8px;top:50%"></div>
     <div class="exit-hint" id="hint-e" style="right:8px;top:50%"></div>
   </div>
-  <div id="fmv"><div class="frame"><div class="title"></div><div class="art"></div><div class="line"></div></div></div>
+  <div id="fmv"><div class="frame" id="fmv-frame">
+      <div class="title"></div>
+      <video id="death-vid" playsinline webkit-playsinline muted></video>
+      <div class="art"></div>
+      <div class="line"></div>
+    </div></div>
   <div id="danger-bar">MUSIC SHIFT — FIGHT / FLEE / HIDE</div>
   <div class="founder" id="founder"></div>
   <div id="audio-unlock" class="show">TAP HERE TO START THE GLOW (sound on)</div>
@@ -674,10 +685,19 @@
     setMusicPattern('death'); setFxMode('death');
     if (viewEl) viewEl.classList.remove('danger-roll');
     const fmv = document.getElementById('fmv');
-    fmv.querySelector('.title').textContent = 'DEATH · 5 SECONDS';
+    fmv.querySelector('.title').textContent = 'DEATH';
     fmv.querySelector('.art').textContent = '  ╭──────────╮\n  │ ▓░ STATIC │\n  ╰──────────╯\n  back to the glow';
     fmv.querySelector('.line').textContent = reason + ' Status is saved.';
     fmv.classList.add('show');
+    const frame = document.getElementById('fmv-frame');
+    const vid = document.getElementById('death-vid');
+    if (vid) {
+      vid.src = 'https://cdn.jsdelivr.net/gh/CubitChompskyhonk/cubit-games@main/docs/assets/death-static.mp4';
+      vid.currentTime = 0;
+      if (frame) frame.classList.add('has-video');
+      const p = vid.play();
+      if (p && p.catch) p.catch(() => {});
+    }
     dead = true;
     deathCount++;
     examineMemory.remote = 'The remote remembers your thumb from a previous glow.';
@@ -686,6 +706,10 @@
     saveStatus();
     setTimeout(() => {
       fmv.classList.remove('show');
+      const vid2 = document.getElementById('death-vid');
+      if (vid2) { vid2.pause(); vid2.removeAttribute('src'); vid2.load(); }
+      const frame2 = document.getElementById('fmv-frame');
+      if (frame2) frame2.classList.remove('has-video');
       setMusicPattern('normal'); setFxMode('normal');
       dead = false; hp = 3; hallStretch = 0; mercyLeft = 1; hideStreak = 0; awayTime = 0; danger = false;
       enter('tv');
@@ -697,7 +721,7 @@
       if (flags.marked) _p.push('marked');
       if (flags.named) _p.push('named');
       if (_p.length) say('Still ' + _p.join(', ') + '.', 'ok');
-    }, 5000);
+    }, 4500);
   }
   function die(msg) { playDeathFMV(msg); }
 
