@@ -82,6 +82,16 @@
       line-height: 1.15; color: rgba(175,165,195,0.55); white-space: pre;
       text-align: center; pointer-events: none; text-shadow: 0 0 8px rgba(0,0,0,0.8);
     }
+    #view.has-plate #scene-art {
+      opacity: 0.12;
+      color: rgba(255,255,255,0.35);
+      text-shadow: 0 0 4px #000;
+    }
+    #view.has-plate #backdrop {
+      background-size: cover !important;
+      background-position: center bottom !important;
+      background-repeat: no-repeat !important;
+    }
     #view.tv-room #scene-art {
       color: rgba(150,200,255,0.6); text-shadow: 0 0 12px rgba(80,160,255,0.35);
     }
@@ -201,7 +211,7 @@
 </head>
 <body>
   <header>
-    <span>Under the Glow · v0.15</span>
+    <span>Under the Glow · v0.15.1</span>
     <span id="score">0</span>
   </header>
   <div id="view">
@@ -266,6 +276,11 @@
       look: 'Only in the glass when you are not looking at yourself.',
       talk: 'Fog answers before you finish the sentence.'
     }
+  };
+
+  
+  const ART = {
+    kitchen: 'https://cubitchompskyhonk.github.io/cubit-games/assets/kitchen-317.jpg'
   };
 
   const TAPES = {
@@ -799,7 +814,18 @@
         (r.npc ? '\nNPC:' + r.npc : '');
     }
     artEl.textContent = art;
-    backdrop.style.background = r.bg;
+    const plate = (typeof ART !== 'undefined' && ART[roomId]) ? ART[roomId] : null;
+    if (plate) {
+      backdrop.style.backgroundImage = 'url(' + plate + ')';
+      backdrop.style.backgroundSize = 'cover';
+      backdrop.style.backgroundPosition = 'center bottom';
+      backdrop.style.backgroundColor = '#0a0a0a';
+      viewEl.classList.add('has-plate');
+    } else {
+      backdrop.style.backgroundImage = 'none';
+      backdrop.style.background = r.bg;
+      viewEl.classList.remove('has-plate');
+    }
     viewEl.classList.toggle('tv-room', roomId === 'tv');
     invEl.textContent = 'Carrying: ' + (inv.length ? inv.join(', ') : 'nothing');
     playerEl.style.left = px + '%'; playerEl.style.top = py + '%';
