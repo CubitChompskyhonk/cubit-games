@@ -182,11 +182,26 @@
     }
     #danger-bar.on { display: block; animation: blink 0.5s step-end infinite; }
     @keyframes blink { 50% { opacity: 0.4; } }
+
+    #view.mode-map #scene-art { font-size: 9px; line-height: 1.1; }
+    #view.mode-wide { height: 48dvh; min-height: 240px; }
+    #view.mode-wide #scene-art { font-size: 11px; }
+    #ui-mode {
+      position: absolute; top: 8px; right: 64px; z-index: 7;
+      font-family: "IBM Plex Mono", monospace; font-size: 9px;
+      letter-spacing: 0.08em; color: var(--mute);
+      background: rgba(0,0,0,0.4); border: 1px solid var(--line);
+      border-radius: 4px; padding: 4px 6px; cursor: pointer;
+    }
+    .npc-tag {
+      color: #c0a0e0; font-family: "IBM Plex Mono", monospace; font-size: 11px;
+    }
+
   </style>
 </head>
 <body>
   <header>
-    <span>Under the Glow · v0.14</span>
+    <span>Under the Glow · v0.15</span>
     <span id="score">0</span>
   </header>
   <div id="view">
@@ -196,6 +211,7 @@
     <div id="grain"></div>
     <div id="vignette"></div>
     <div id="room-label"></div>
+    <button type="button" id="ui-mode">VIEW</button>
     <button type="button" id="fx-toggle">FX ON</button>
     <div id="scene-art"></div>
     <div id="player"><div class="body"></div></div>
@@ -229,6 +245,28 @@
   if (params.get('access') === 'founder') localStorage.setItem('utg_founder', '1');
   let unlocked = isFounder || localStorage.getItem('utg_unlocked') === '1' || params.get('paid') === '1';
   if (params.get('paid') === '1') localStorage.setItem('utg_unlocked', '1');
+
+  
+  const NPCS = {
+    sitter: {
+      name: 'the sitter',
+      art: '  ☺\n /|\\\n / \\',
+      look: 'A person-shaped absence on the couch. The face is static when you focus.',
+      talk: 'The sitter laughs one second late, at nothing. Then: "Wrong channel."'
+    },
+    stacker: {
+      name: 'the stacker',
+      art: '  ☺\n [█]\n  |',
+      look: 'Someone sorting boxes by a year that has not happened. Hands like soft tape.',
+      talk: 'It offers you a box lid. Inside: dust shaped like a name.'
+    },
+    watcher: {
+      name: 'the watcher',
+      art: '  ☺\n  | \n  mirror',
+      look: 'Only in the glass when you are not looking at yourself.',
+      talk: 'Fog answers before you finish the sentence.'
+    }
+  };
 
   const TAPES = {
     'tape-a': {
@@ -275,6 +313,27 @@
         '[tape ends]'
       ]
     },
+    'tape-g': {
+      id: 'tape-g', title: 'TAPE G — CYCLE',
+      room: 'laundry',
+      play: [
+        '[washer spin]',
+        'VOICE: Dirt leaves. Names stick in the lint trap.',
+        'VOICE: If the machine stops on your number, leave.',
+        '[tape ends]'
+      ]
+    },
+    'tape-f': {
+      id: 'tape-f', title: 'TAPE F — COUCH',
+      room: 'living',
+      play: [
+        '[sitcom laugh, empty]',
+        'VOICE: The living room kept watching after the set moved.',
+        'VOICE: If someone is still on the couch, do not sit beside them.',
+        'VOICE: They are practicing being a family.',
+        '[tape ends]'
+      ]
+    },
     'tape-e': {
       id: 'tape-e', title: 'TAPE E — BELOW',
       room: 'basement',
@@ -301,7 +360,7 @@
         ─┴─────┴─
       carpet lit wrong`,
       bg: 'radial-gradient(ellipse at 50% 40%, #1a3050 0%, #0a1020 40%, #050608 100%)',
-      exits: { e: 'hall', n: 'bedroom' },
+      exits: { e: 'hall', n: 'bedroom', w: 'living' },
       desc: 'A dead channel that still breathes. A VCR mouth waits under the set. Blue-white static paints the carpet.'
     },
     hall: {
@@ -331,7 +390,8 @@
    tile tile tile`,
       bg: 'radial-gradient(ellipse at 50% 35%, #2a3040 0%, #0c1018 55%, #06080e 100%)',
       exits: { w: 'hall' },
-      desc: 'The mirror is a rectangle of delayed truth. Fog writes before you do.'
+      desc: 'The mirror is a rectangle of delayed truth. Fog writes before you do.',
+      npc: 'watcher'
     },
     kitchen: {
       name: 'Kitchen at 3:17',
@@ -372,6 +432,49 @@
       exits: { u: 'hall' },
       desc: 'Cold climbs. Water talks late. Something answers the static with lag.'
     },
+    
+    living: {
+      name: 'Living Room That Was',
+      art:
+`  ≈≈≈≈≈≈≈≈≈≈≈≈
+  │  couch≈≈≈  │
+  │    ☺??     │  ← figure
+  │  rug·····  │
+  │         TV→│
+  └────────────┘`,
+      bg: 'radial-gradient(ellipse at 70% 50%, #1a2030 0%, #0a0c12 55%, #050608 100%)',
+      exits: { e: 'tv', w: 'laundry', n: 'hall' },
+      desc: 'Furniture faces a wall where a TV used to be. Something still sits on the couch as if the show continues.',
+      npc: 'sitter'
+    },
+    laundry: {
+      name: 'Laundry Behind the House',
+      art:
+`  ┌─────┐ ┌─────┐
+  │wash │ │ dry │
+  │ ▓▓▓ │ │  ◯  │
+  └──┬──┘ └──┬──┘
+    water scar
+    [cassette?]`,
+      bg: 'radial-gradient(ellipse at 40% 60%, #152028 0%, #0a1014 50%, #05080a 100%)',
+      exits: { e: 'living' },
+      desc: 'Machines sleep mid-cycle. A drain remembers floods. Hum under the hum.',
+      npc: null
+    },
+    attic: {
+      name: 'Attic Mouth',
+      art:
+`    ╱╲  ╱╲  ╱╲
+   ╱  ╲╱  ╲╱  ╲
+  │ insulation │
+  │   box box  │
+  │  ☺ ladder  │
+  └─────╨──────┘`,
+      bg: 'radial-gradient(ellipse at 50% 20%, #2a2010 0%, #120e08 50%, #050403 100%)',
+      exits: { d: 'bedroom', s: 'bedroom' },
+      desc: 'Heat and fiberglass smell. Boxes labeled with years that skip. A figure by the ladder does not climb.',
+      npc: 'stacker'
+    },
     bedroom: {
       name: 'Bedroom Without a Bed',
       art:
@@ -383,7 +486,7 @@
    ·  sock?  ·
    dust bed-shape`,
       bg: 'radial-gradient(ellipse at 60% 30%, #1a1220 0%, #0a0810 55%, #050408 100%)',
-      exits: { s: 'tv' },
+      exits: { s: 'tv', n: 'attic', u: 'attic' },
       desc: 'Mattress gone. Closet ajar. Dust still holds the outline of sleep.'
     }
   };
@@ -586,6 +689,25 @@
   const fxCanvas = document.getElementById('fx-canvas');
   const fxCtx = fxCanvas.getContext('2d');
   let fxOn = localStorage.getItem('utg_fx') !== '0';
+  const uiModes = ['standard', 'map', 'wide'];
+  let uiMode = localStorage.getItem('utg_ui') || 'standard';
+  function applyUiMode() {
+    viewEl.classList.remove('mode-map', 'mode-wide');
+    if (uiMode === 'map') viewEl.classList.add('mode-map');
+    if (uiMode === 'wide') viewEl.classList.add('mode-wide');
+    const b = document.getElementById('ui-mode');
+    if (b) b.textContent = uiMode === 'standard' ? 'VIEW' : uiMode.toUpperCase();
+    resizeFx();
+  }
+  const uiBtn = document.getElementById('ui-mode');
+  if (uiBtn) uiBtn.onclick = (e) => {
+    e.stopPropagation();
+    uiMode = uiModes[(uiModes.indexOf(uiMode) + 1) % uiModes.length];
+    localStorage.setItem('utg_ui', uiMode);
+    applyUiMode();
+    say('View mode: ' + uiMode + (uiMode === 'map' ? ' (compact ASCII)' : uiMode === 'wide' ? ' (larger stage)' : ' (default)'), 'sys');
+  };
+
   let fxMode = 'normal', fxDeathT = 0, asciiFlicker = 0;
   function resizeFx() {
     const r = viewEl.getBoundingClientRect();
@@ -635,7 +757,8 @@
     asciiFlicker++;
     if (roomId === 'tv' && artEl && asciiFlicker % 8 === 0) artEl.style.opacity = (0.45 + Math.random() * 0.35).toFixed(2);
     else if (artEl && roomId !== 'tv') artEl.style.opacity = '1';
-    requestAnimationFrame(fxLoop);
+    applyUiMode();
+  requestAnimationFrame(fxLoop);
   }
   document.getElementById('fx-toggle').onclick = (e) => {
     e.stopPropagation();
@@ -647,6 +770,7 @@
   viewEl.classList.toggle('fx-off', !fxOn);
   window.addEventListener('resize', resizeFx);
   setTimeout(resizeFx, 50);
+  applyUiMode();
   requestAnimationFrame(fxLoop);
 
   setInterval(() => {
@@ -665,16 +789,21 @@
     labelEl.textContent = r.name;
     // Show tape marker in ASCII if tape still here
     let art = r.art;
-    const tapeHere = Object.values(TAPES).find(tp => tp.room === roomId && !has(tp.id) && !tapesPlayed[tp.id]);
-    if (tapeHere && !has(tapeHere.id)) {
-      art = art + '\n  [cassette]';
+    const tapeHere = Object.values(TAPES).find(tp => tp.room === roomId && !has(tp.id));
+    if (tapeHere && !has(tapeHere.id)) art = art + '\n  [cassette]';
+    if (r.npc && NPCS[r.npc]) art = art + '\n' + NPCS[r.npc].art + '  ← ' + NPCS[r.npc].name;
+    if (uiMode === 'map') {
+      const ex = Object.keys(r.exits || {}).map(d => d.toUpperCase() + ':' + r.exits[d]).join(' ');
+      art = r.name + '\n' + '·'.repeat(12) + '\n' + (ex || 'no exits') +
+        (tapeHere && !has(tapeHere.id) ? '\n[cassette]' : '') +
+        (r.npc ? '\nNPC:' + r.npc : '');
     }
     artEl.textContent = art;
     backdrop.style.background = r.bg;
     viewEl.classList.toggle('tv-room', roomId === 'tv');
     invEl.textContent = 'Carrying: ' + (inv.length ? inv.join(', ') : 'nothing');
     playerEl.style.left = px + '%'; playerEl.style.top = py + '%';
-    document.getElementById('founder').textContent = isFounder ? 'FOUNDER · pay waived · v0.14' : '';
+    document.getElementById('founder').textContent = isFounder ? 'FOUNDER · pay waived · v0.15' : '';
     ['n','s','e','w'].forEach(d => {
       document.getElementById('hint-' + d).textContent = r.exits[d] ? d.toUpperCase() : '';
     });
@@ -796,13 +925,13 @@
         else playDeathFMV('Fight fails.');
       }
     } else if (s === 'help') {
-      say('Move N/W/S/E. look, listen, take, use, talk, examine, inventory, play tape, map, status, fight/flee/hide. TV is the guide. Tapes play only under the glow. Status saves after death.');
+      say('Move N/W/S/E. look, listen, take, use, talk, examine, inventory, play tape, map, status, fight/flee/hide. TV is the guide. Tapes play under the glow. NPCs: look/talk. VIEW button cycles stage layout. Status saves after death.');
     } else if (s === 'map') {
-      say('TV(guide,VCR) —n→ Bedroom · —e→ Hall —e→ Mirror; Hall —n→ Kitchen · —s→ Yard · —down→ Basement. Tapes: bedroom, mirror, kitchen, yard, basement.');
+      say('TV —w→ Living —w→ Laundry; TV —n→ Bedroom —n→ Attic; TV —e→ Hall —e→ Mirror; Hall —n→ Kitchen · —s→ Yard · —down→ Basement. VIEW cycles stage layout.');
     } else if (s === 'status') {
       say('Nerve ' + hp + ' · score ' + score + ' · ' + [flags.seen&&'seen',flags.marked&&'marked',flags.named&&'named'].filter(Boolean).join(', '));
       const tp = Object.keys(tapesPlayed).length;
-      say('Tapes played: ' + tp + '/5');
+      say('Tapes played: ' + tp + '/7');
     } else if (s === 'inventory' || s === 'i' || s === 'inv') {
       say('Carrying: ' + (inv.length ? inv.join(', ') : 'nothing'));
     } else if (s.startsWith('play')) {
@@ -877,9 +1006,12 @@
       else say('Not now.');
       saveStatus();
     } else if (s.startsWith('talk') || s.startsWith('say') || s.startsWith('ask') || s.startsWith('name') || s.startsWith('hello')) {
-      if (roomId === 'mirror') {
+      if (ROOMS[roomId] && ROOMS[roomId].npc && NPCS[ROOMS[roomId].npc] && roomId !== 'mirror') {
+        say(NPCS[ROOMS[roomId].npc].talk, 'npc-tag');
+      } else if (roomId === 'mirror') {
         flags.named = true; flags.seen = true; addScore(20);
         say('You speak a name. The mirror owns it better.', 'ok');
+        if (NPCS.watcher) say(NPCS.watcher.talk, 'npc-tag');
       } else if (roomId === 'tv') {
         say('The glow answers in snow, then in orders.');
         tvGuide(true);
@@ -928,7 +1060,7 @@
   document.body.addEventListener('touchstart', function once() { ensureAudio(); document.body.removeEventListener('touchstart', once); }, { passive: true });
 
   loadStatus();
-  say('Under the Glow v0.14 — tapes, denser ASCII sets, CRT. Look under the glow for guidance.', 'sys');
+  say('Under the Glow v0.15 — tapes, denser ASCII sets, CRT. Look under the glow for guidance.', 'sys');
   if (isFounder) say('FOUNDER RELEASE — pay waived.', 'ok');
   render();
   cmd.focus();
