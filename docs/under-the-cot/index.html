@@ -208,7 +208,7 @@
 </head>
 <body>
   <header>
-    <span>Under the Glow · v0.11</span>
+    <span>Under the Glow · v0.12</span>
     <span id="score">0</span>
   </header>
   <div id="view">
@@ -347,6 +347,10 @@
   let examineMemory = {};
   let awayTime = 0;
   let lastGuideStage = -1;
+  let hideStreak = 0;
+  let dangerHalfAnnounced = false;
+  let entityTimerStart = 0;
+  let entityWindowMs = 9000;
 
   const logEl = document.getElementById('log');
   const artEl = document.getElementById('scene-art');
@@ -453,9 +457,17 @@
     say('The tune warps. Something uses the doorway.', 'bad');
     say('FIGHT · FLEE · HIDE', 'sys');
     clearTimeout(entityTimer);
+    dangerHalfAnnounced = false;
+    entityTimerStart = Date.now();
     entityTimer = setTimeout(() => {
       if (danger) playDeathFMV('The entity enters while you hesitate.');
-    }, 9000);
+    }, entityWindowMs);
+    setTimeout(() => {
+      if (danger && !dangerHalfAnnounced) {
+        dangerHalfAnnounced = true;
+        say('It is at the frame. Decide.', 'bad');
+      }
+    }, Math.floor(entityWindowMs / 2));
   }
 
   function endDanger(msg) {
@@ -592,7 +604,7 @@
       fmv.classList.remove('show');
       setMusicPattern('normal'); setFxMode('normal'); if (viewEl) viewEl.classList.remove('danger-roll');
       dead = false; inv = []; hp = 3; ended = false;
-      flags = { seen: false, marked: false, named: false }; hallStretch = 0; mercyLeft = 1; hideCount = 0; fightCount = 0;
+      flags = { seen: false, marked: false, named: false }; hallStretch = 0; mercyLeft = 1; hideCount = 0; fightCount = 0; hideStreak = 0;
       enter('tv');
       say('You are under the glow again. Static paints your hands.', 'sys');
     }, 5000);
@@ -633,6 +645,10 @@
     say('— ' + ROOMS[id].name + ' —', 'sys'); if (typeof resizeFx === 'function') resizeFx();
     if (id === 'tv') {
       awayTime = 0;
+      if (danger) {
+        endDanger('It will not follow under the glow. The signal locks it out.');
+        addScore(6);
+      }
       say('The glow holds. For a moment the noise is almost language.', 'sys');
     }
     resetDwell();
@@ -704,24 +720,44 @@
       if (!danger) say('Nothing to fight or flee. The glow is steady.');
       else if (s === 'hide') {
         hideCount++;
+        hideStreak++;
         if (mercyLeft > 0) {
           mercyLeft--;
+          hideStreak = 0;
           endDanger('You fold into the furniture. The house allows it — once.');
           addScore(8);
-        } else if (Math.random() < 0.45) {
-          endDanger('You hide. Barely. Something sniffs the gap.');
-          addScore(4);
         } else {
-          playDeathFMV('The furniture was already full.');
+          let hideChance = 0.5;
+          if (hideStreak >= 3) hideChance = 0.2;
+          else if (hideStreak >= 2) hideChance = 0.35;
+          if (Math.random() < hideChance) {
+            endDanger(hideStreak >= 2 ? 'You hide. It almost checked this place first.' : 'You hide. Barely. Something sniffs the gap.');
+            addScore(4);
+          } else {
+            playDeathFMV(hideStreak >= 2 ? 'It learned where you hide.' : 'The furniture was already full.');
+          }
         }
       }
       else if (s === 'flee' || s === 'run') {
-        endDanger('You take a door without choosing it.');
-        const dirs = Object.keys(ROOMS[roomId].exits);
-        tryExit(dirs[Math.floor(Math.random() * dirs.length)] || 'e');
-        addScore(5);
+        hideStreak = 0;
+        // Prefer path toward TV if possible
+        const exits = ROOMS[roomId].exits || {};
+        let toward = null;
+        for (const [d, dest] of Object.entries(exits)) {
+          if (dest === 'tv') toward = d;
+        }
+        if (!toward && exits.w && roomId === 'hall') toward = 'w';
+        if (!toward && exits.s && roomId === 'bedroom') toward = 's';
+        if (!toward && exits.u && roomId === 'basement') toward = 'u';
+        endDanger(toward ? 'You run for the glow. The entity does not like that light.' : 'You take a door without choosing it.');
+        if (toward) tryExit(toward);
+        else {
+          const dirs = Object.keys(exits);
+          tryExit(dirs[Math.floor(Math.random() * dirs.length)] || 'e');
+        }
+        addScore(toward ? 8 : 5);
       } else if (s === 'fight') {
-        fightCount++; if (Math.random() < 0.35) { endDanger('You swing. It is surprised.'); addScore(12); }
+        fightCount++; hideStreak = 0; if (Math.random() < 0.35) { endDanger('You swing. It is surprised.'); addScore(12); }
         else playDeathFMV('You fight. The entity is not fair.');
       }
     } else if (s === 'help') {
@@ -1000,7 +1036,7 @@
   setTimeout(resizeFx, 50);
   requestAnimationFrame(fxLoop);
 
-  say('Under the Glow v0.11 — the TV is the guide. Look at it. Do not stay away too long.', 'sys');
+  say('Under the Glow v0.12 — the TV is the guide. Look at it. Do not stay away too long.', 'sys');
   if (isFounder) say('FOUNDER RELEASE — pay waived. Tap the blue sound bar if silent.', 'ok');
   else say('Tap the sound bar, then type help.', 'sys');
   render();
