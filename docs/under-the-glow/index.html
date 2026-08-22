@@ -87,6 +87,7 @@
       color: rgba(255,255,255,0.35);
       text-shadow: 0 0 4px #000;
     }
+    /* plate scroll: position set in JS */
     #view.has-plate #backdrop {
       background-size: cover !important;
       background-position: center bottom !important;
@@ -211,7 +212,7 @@
 </head>
 <body>
   <header>
-    <span>Under the Glow · v0.15.1</span>
+    <span>Under the Glow · v0.16</span>
     <span id="score">0</span>
   </header>
   <div id="view">
@@ -506,7 +507,7 @@
     }
   };
 
-  let roomId = 'tv', px = 50, py = 72;
+  let roomId = 'tv', px = 50, py = 72, plateY = 100;
   let inv = [], hp = 3, score = 0, moves = 0, dead = false, ended = false;
   let flags = { seen: false, marked: false, named: false };
   let hallStretch = 0, mercyLeft = 1, hideCount = 0, fightCount = 0, deathCount = 0;
@@ -817,13 +818,22 @@
     const plate = (typeof ART !== 'undefined' && ART[roomId]) ? ART[roomId] : null;
     if (plate) {
       backdrop.style.backgroundImage = 'url(' + plate + ')';
-      backdrop.style.backgroundSize = 'cover';
-      backdrop.style.backgroundPosition = 'center bottom';
+      // Taller than view so we can scroll: show bottom by default (plateY=100)
+      backdrop.style.backgroundSize = '120% auto';
+      if (!backdrop.style.backgroundSize || true) {
+        backdrop.style.backgroundSize = 'cover';
+        // use 180% height equivalent via size and position
+        backdrop.style.backgroundSize = '100% 180%';
+      }
+      backdrop.style.backgroundPosition = 'center ' + plateY + '%';
       backdrop.style.backgroundColor = '#0a0a0a';
+      backdrop.style.transition = 'background-position 0.12s linear';
       viewEl.classList.add('has-plate');
     } else {
       backdrop.style.backgroundImage = 'none';
       backdrop.style.background = r.bg;
+      backdrop.style.backgroundSize = '';
+      backdrop.style.backgroundPosition = '';
       viewEl.classList.remove('has-plate');
     }
     viewEl.classList.toggle('tv-room', roomId === 'tv');
@@ -842,6 +852,7 @@
     else if (via === 'n') { px = 50; py = 80; }
     else if (via === 's') { px = 50; py = 26; }
     else { px = 50; py = 72; }
+    plateY = 100;
     say('— ' + ROOMS[id].name + ' —', 'sys');
     resizeFx();
     if (id === 'tv') {
@@ -880,6 +891,11 @@
     if (dir === 's') py = Math.min(84, py + step);
     if (dir === 'w') px = Math.max(10, px - step);
     if (dir === 'e') px = Math.min(90, px + step);
+    // Scroll plate: up walks into the image (toward subjects), down toward floor
+    if (typeof ART !== 'undefined' && ART[roomId]) {
+      if (dir === 'n') plateY = Math.max(0, plateY - 8);
+      if (dir === 's') plateY = Math.min(100, plateY + 8);
+    }
     render();
     if (dir === 'e' && px >= 88) tryExit('e');
     if (dir === 'w' && px <= 12) tryExit('w');
