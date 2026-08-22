@@ -25,22 +25,39 @@
     }
     #score { color: var(--accent); }
     #view {
-      position: relative; height: 38dvh; min-height: 190px; flex-shrink: 0;
+      position: relative; height: 40dvh; min-height: 200px; flex-shrink: 0;
       overflow: hidden; border-bottom: 1px solid var(--line);
+      border-radius: 18px / 22px; margin: 6px 10px 0;
+      box-shadow: inset 0 0 0 3px #0a0a0c, inset 0 0 0 5px #1a1a22, 0 0 24px rgba(0,0,0,0.8);
     }
-    #backdrop { position: absolute; inset: 0; background-size: cover; background-position: center; transition: background 0.5s ease; }
+    #view.tv-room {
+      box-shadow: inset 0 0 0 3px #0a0a0c, inset 0 0 0 5px #1a2230,
+        0 0 30px rgba(60,120,200,0.15), inset 0 0 80px rgba(40,100,180,0.08);
+    }
+    #view.danger-roll { animation: crtRoll 0.15s steps(2, end) infinite; }
+    @keyframes crtRoll {
+      0% { transform: translateY(0); }
+      50% { transform: translateY(2px); }
+      100% { transform: translateY(-1px); }
+    }
+    #backdrop { position: absolute; inset: 0; transition: background 0.5s ease; }
+    #fx-canvas {
+      position: absolute; inset: 0; z-index: 1; width: 100%; height: 100%;
+      pointer-events: none; opacity: 0.55; mix-blend-mode: screen;
+    }
+    #view.tv-room #fx-canvas { opacity: 0.7; }
+    #view.fx-off #fx-canvas { display: none; }
     #dust, #grain, #vignette { position: absolute; inset: 0; pointer-events: none; }
     #dust {
-      z-index: 3; opacity: 0.75;
+      z-index: 3; opacity: 0.7;
       background-image:
         radial-gradient(1px 1px at 10% 20%, rgba(255,255,255,0.2), transparent),
-        radial-gradient(1px 1px at 70% 40%, rgba(255,255,255,0.1), transparent),
-        radial-gradient(1px 1px at 40% 80%, rgba(120,200,255,0.12), transparent);
+        radial-gradient(1px 1px at 70% 40%, rgba(255,255,255,0.1), transparent);
       animation: drift 14s linear infinite;
     }
     @keyframes drift { to { transform: translateY(-18px); } }
     #grain {
-      z-index: 4; opacity: 0.07;
+      z-index: 4; opacity: 0.06;
       background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
     }
     #vignette {
@@ -52,13 +69,22 @@
       font-family: "IBM Plex Mono", monospace; font-size: 10px;
       letter-spacing: 0.12em; color: var(--mute);
     }
-    #scene-art {
-      position: absolute; left: 50%; top: 46%; transform: translate(-50%, -50%);
-      z-index: 1; font-family: "IBM Plex Mono", monospace; font-size: 10px;
-      line-height: 1.2; color: rgba(170,160,190,0.48); white-space: pre;
-      text-align: center; pointer-events: none;
+    #fx-toggle {
+      position: absolute; top: 8px; right: 10px; z-index: 7;
+      font-family: "IBM Plex Mono", monospace; font-size: 9px;
+      letter-spacing: 0.1em; color: var(--mute);
+      background: rgba(0,0,0,0.4); border: 1px solid var(--line);
+      border-radius: 4px; padding: 4px 6px; cursor: pointer;
     }
-    #view.tv-room #scene-art { color: rgba(140,200,255,0.55); text-shadow: 0 0 12px rgba(80,160,255,0.35); }
+    #scene-art {
+      position: absolute; left: 50%; top: 48%; transform: translate(-50%, -50%);
+      z-index: 1; font-family: "IBM Plex Mono", monospace; font-size: 10px;
+      line-height: 1.15; color: rgba(175,165,195,0.55); white-space: pre;
+      text-align: center; pointer-events: none; text-shadow: 0 0 8px rgba(0,0,0,0.8);
+    }
+    #view.tv-room #scene-art {
+      color: rgba(150,200,255,0.6); text-shadow: 0 0 12px rgba(80,160,255,0.35);
+    }
     #player {
       position: absolute; width: 16px; height: 26px;
       margin-left: -8px; margin-top: -26px; z-index: 4;
@@ -89,6 +115,10 @@
     #log .bad { color: var(--bad); }
     #log .ok { color: var(--ok); }
     #log .you { color: #a89888; font-style: italic; }
+    #log .tape {
+      color: #a8c0e8; font-family: "IBM Plex Mono", monospace; font-size: 12px;
+      border-left: 2px solid #3a5080; padding-left: 8px; margin: 8px 0;
+    }
     .inv {
       padding: 5px 12px; font-size: 11px; font-family: "IBM Plex Mono", monospace;
       color: var(--mute); border-top: 1px solid var(--line); flex-shrink: 0;
@@ -106,14 +136,8 @@
     #audio-unlock.show { display: block; }
     .pad {
       display: grid; grid-template-columns: 48px 48px 48px; grid-template-rows: 40px 40px;
-      gap: 8px; padding: 10px 10px 12px; justify-content: center; flex-shrink: 0;
-      border-top: 1px solid var(--line);
-      background: #0c0a12;
-      margin-bottom: 0;
-    }
-    .pad.pad-safe { /* direction cluster raised above command bar */ }
-    .bar {
-      padding-top: 12px !important;
+      gap: 8px; padding: 12px 10px 14px; justify-content: center; flex-shrink: 0;
+      border-top: 1px solid var(--line); background: #0c0a12;
     }
     .pad button {
       background: #141022; border: 1px solid #2a2440; color: var(--mute);
@@ -121,7 +145,7 @@
     }
     .pad .blank { visibility: hidden; }
     .bar {
-      display: flex; gap: 8px; padding: 14px 10px calc(12px + env(safe-area-inset-bottom)); margin-top: 2px;
+      display: flex; gap: 8px; padding: 14px 10px calc(12px + env(safe-area-inset-bottom));
       border-top: 1px solid var(--line); flex-shrink: 0; background: #0a0810;
     }
     #cmd {
@@ -155,70 +179,24 @@
       display: none; flex-shrink: 0; padding: 6px 12px;
       background: #1a0810; border-top: 1px solid #5a2030;
       font-family: "IBM Plex Mono", monospace; font-size: 11px; color: #d06070;
-      letter-spacing: 0.08em;
     }
     #danger-bar.on { display: block; animation: blink 0.5s step-end infinite; }
     @keyframes blink { 50% { opacity: 0.4; } }
-  
-    #fx-canvas {
-      position: absolute; inset: 0; z-index: 1;
-      width: 100%; height: 100%;
-      pointer-events: none; opacity: 0.55;
-      mix-blend-mode: screen;
-    }
-    #view.tv-room #fx-canvas { opacity: 0.7; }
-    #view.fx-off #fx-canvas { display: none; }
-    #view.tv-room #backdrop {
-      box-shadow: inset 0 0 60px rgba(80,160,255,0.15);
-    }
-    #fx-toggle {
-      position: absolute; top: 8px; right: 10px; z-index: 7;
-      font-family: "IBM Plex Mono", monospace; font-size: 9px;
-      letter-spacing: 0.1em; color: var(--mute);
-      background: rgba(0,0,0,0.4); border: 1px solid var(--line);
-      border-radius: 4px; padding: 4px 6px; cursor: pointer;
-    }
-
-
-    #view {
-      border-radius: 18px / 22px;
-      margin: 6px 10px 0;
-      box-shadow:
-        inset 0 0 0 3px #0a0a0c,
-        inset 0 0 0 5px #1a1a22,
-        0 0 24px rgba(0,0,0,0.8);
-    }
-    #view.tv-room {
-      box-shadow:
-        inset 0 0 0 3px #0a0a0c,
-        inset 0 0 0 5px #1a2230,
-        0 0 30px rgba(60,120,200,0.15),
-        inset 0 0 80px rgba(40,100,180,0.08);
-    }
-    #view.danger-roll {
-      animation: crtRoll 0.15s steps(2, end) infinite;
-    }
-    @keyframes crtRoll {
-      0% { transform: translateY(0); }
-      50% { transform: translateY(2px); }
-      100% { transform: translateY(-1px); }
-    }
-
   </style>
 </head>
 <body>
   <header>
-    <span>Under the Glow · v0.12</span>
+    <span>Under the Glow · v0.14</span>
     <span id="score">0</span>
   </header>
   <div id="view">
     <div id="backdrop"></div>
     <canvas id="fx-canvas"></canvas>
-    <button type="button" id="fx-toggle">FX ON</button>
     <div id="dust"></div>
     <div id="grain"></div>
     <div id="vignette"></div>
     <div id="room-label"></div>
+    <button type="button" id="fx-toggle">FX ON</button>
     <div id="scene-art"></div>
     <div id="player"><div class="body"></div></div>
     <div class="exit-hint" id="hint-n" style="top:8px;left:50%;transform:translateX(-50%)"></div>
@@ -240,7 +218,6 @@
     <button type="button" data-dir="s">S</button>
     <button type="button" data-dir="e">E</button>
   </div>
-  <!-- pad-gap-fix -->
   <div class="bar">
     <input id="cmd" placeholder="What do you do?" autocomplete="off" enterkeyhint="done" />
     <button type="button" id="go">Do</button>
@@ -253,103 +230,170 @@
   let unlocked = isFounder || localStorage.getItem('utg_unlocked') === '1' || params.get('paid') === '1';
   if (params.get('paid') === '1') localStorage.setItem('utg_unlocked', '1');
 
-  const ART = { tv: null, hall: null, mirror: null, kitchen: null, yard: null, basement: null, bedroom: null };
+  const TAPES = {
+    'tape-a': {
+      id: 'tape-a', title: 'TAPE A — BEDTIME',
+      room: 'bedroom',
+      play: [
+        '[tracking noise]',
+        'VOICE (soft): If you leave the glow, count to twenty and come back.',
+        'VOICE: The house learns faces when the set is off.',
+        'VOICE: Keep the channel open. Even on static.',
+        '[tape ends]'
+      ]
+    },
+    'tape-b': {
+      id: 'tape-b', title: 'TAPE B — MIRROR',
+      room: 'mirror',
+      play: [
+        '[hum]',
+        'VOICE: Fog is just the glass breathing.',
+        'VOICE: Do not let it write your name first.',
+        'VOICE: If it already has, you are marked whether you agree or not.',
+        '[tape ends]'
+      ]
+    },
+    'tape-c': {
+      id: 'tape-c', title: 'TAPE C — KITCHEN',
+      room: 'kitchen',
+      play: [
+        '[fridge compressor]',
+        'VOICE: 3:17 is when checks used to happen.',
+        'VOICE: Labels lie to be kind. Kindness is a kind of trap.',
+        'VOICE: Feed the eye if it stares. It remembers hunger.',
+        '[tape ends]'
+      ]
+    },
+    'tape-d': {
+      id: 'tape-d', title: 'TAPE D — YARD',
+      room: 'yard',
+      play: [
+        '[wind on mic]',
+        'VOICE: Do not name what wags.',
+        'VOICE: Names are handles. Handles open doors.',
+        'VOICE: If it already knows you, run to the glow.',
+        '[tape ends]'
+      ]
+    },
+    'tape-e': {
+      id: 'tape-e', title: 'TAPE E — BELOW',
+      room: 'basement',
+      play: [
+        '[water delay]',
+        'VOICE: The delay is how far under you are.',
+        'VOICE: Keys down here open absences, not doors.',
+        'VOICE: The static answers from the stairs if you listen wrong.',
+        '[tape ends]'
+      ]
+    }
+  };
 
   const ROOMS = {
     tv: {
       name: 'Under the Glow',
       art:
-`  ╭────────────╮
-  │ ▓░▓░▓▓░▓░▓ │
-  │ ░▓▓░ STATIC│
-  │ ▓░▓░▓▓░▓░▓ │
-  ╰─────┬──────╯
-     the only light`,
+`    ╔══════════════════╗
+    ║ ▓░▓░▓▓░▓░▓░▓▓░▓░ ║
+    ║ ░  S T A T I C  ▓ ║
+    ║ ▓░▓░▓▓░▓░▓░▓▓░▓░ ║
+    ╚════════╤═════════╝
+         │ VCR │
+        ─┴─────┴─
+      carpet lit wrong`,
       bg: 'radial-gradient(ellipse at 50% 40%, #1a3050 0%, #0a1020 40%, #050608 100%)',
       exits: { e: 'hall', n: 'bedroom' },
-      desc: 'A dead channel that still breathes. Blue-white static paints the carpet. Everything important happens in this light.'
+      desc: 'A dead channel that still breathes. A VCR mouth waits under the set. Blue-white static paints the carpet.'
     },
     hall: {
       name: 'The Hall That Lengthens',
       art:
-`│     │
-│        │
-│           │
-│              ░
-  do not look back`,
+` │ wallpaper │ wallpaper │
+ │    ·      │     ·     │
+ │           │           │
+─┤           │           ├─
+ │           │      ░    │
+ │   runner that forgets │
+ do not look back`,
       bg: 'linear-gradient(95deg, #08060e 0%, #1a1428 40%, #0a0814 100%)',
       exits: { w: 'tv', e: 'mirror', n: 'kitchen', s: 'yard', d: 'basement' },
-      desc: 'Wallpaper breathes on a delay. The far end recedes when watched. A darker stair suggests itself.'
+      desc: 'Wallpaper breathes on a delay. The runner loses track of feet.'
     },
     mirror: {
       name: 'Bathroom Mirror',
       art:
-` ┌────────────┐
- │  fog writes │
- │   first     │
- └────────────┘`,
+`  ┌──────────────┐
+  │ ≈≈ fog ≈≈≈≈  │
+  │              │
+  │   (  ?  )    │
+  │              │
+  └──────┬───────┘
+     sink │ taps
+   tile tile tile`,
       bg: 'radial-gradient(ellipse at 50% 35%, #2a3040 0%, #0c1018 55%, #06080e 100%)',
       exits: { w: 'hall' },
-      desc: 'Condensation forms letters before your breath does. Tiles warmer than skin.'
+      desc: 'The mirror is a rectangle of delayed truth. Fog writes before you do.'
     },
     kitchen: {
       name: 'Kitchen at 3:17',
       art:
-`   (◉) stove-eye
-  ≈≈≈≈≈≈≈≈≈≈≈≈
-     3:17`,
+`  ┌────┐  (◉) stove
+  │████│   ══════
+  │fridge│  clock
+  │  ▒ │   3:17
+  └──┬─┘
+  labels on the counter`,
       bg: 'radial-gradient(ellipse at 25% 55%, #3a1818 0%, #0c0a10 55%, #060508 100%)',
       exits: { s: 'hall' },
-      desc: 'Labels are dares. The clock loves 3:17. The hum competes with the TV in the other room.'
+      desc: 'Fridge light, stove-eye, proud clock. Labels wait to be believed.'
     },
     yard: {
       name: 'Yard with the Wrong Dog',
       art:
-`  ·   ·   ·
- ╱ fence ╲
-   wag ?`,
+`  ·  ·  ·  ·  ·
+ ╱══ fence ══╲
+ │            │
+ │   ~~~~     │
+ │    ?wag    │
+ ╲____________╱`,
       bg: 'radial-gradient(ellipse at 50% 100%, #0a1a14 0%, #080a0c 50%, #050608 100%)',
       exits: { n: 'hall' },
-      desc: 'Night lawn. A shape is eager. Names are sharp tools here.'
+      desc: 'Night grass. A shape practices being friendly. A tape might catch on the fence.'
     },
     basement: {
       name: 'Basement Stairs',
       art:
-`  ╲  dark  ╱
-   ╲      ╱
-    ╲ !! ╱
-   water talk`,
+`    ╲  dark  ╱
+     ╲      ╱
+      ╲ !! ╱
+       ╲  ╱
+     ≈≈water≈≈
+      echo+1`,
       bg: 'radial-gradient(ellipse at 50% 100%, #101018 0%, #06050a 60%, #020203 100%)',
-      exits: { u: 'hall', w: 'tv' },
-      desc: 'Cold climbs. Something below answers the static with a delay. You should not understand it.'
+      exits: { u: 'hall' },
+      desc: 'Cold climbs. Water talks late. Something answers the static with lag.'
     },
     bedroom: {
       name: 'Bedroom Without a Bed',
       art:
-`  empty frame
-  ·  ·  ·  ·
-  closet breath
-  slightly open`,
+`  ┌──closet──┐
+  │ |||| ||| │
+  └────┬─────┘
+       │
+   empty frame
+   ·  sock?  ·
+   dust bed-shape`,
       bg: 'radial-gradient(ellipse at 60% 30%, #1a1220 0%, #0a0810 55%, #050408 100%)',
       exits: { s: 'tv' },
-      desc: 'The mattress is gone. The closet does not close all the way. Dust holds the shape of sleep.'
+      desc: 'Mattress gone. Closet ajar. Dust still holds the outline of sleep.'
     }
   };
 
   let roomId = 'tv', px = 50, py = 72;
   let inv = [], hp = 3, score = 0, moves = 0, dead = false, ended = false;
   let flags = { seen: false, marked: false, named: false };
-  let hallStretch = 0;
-  let mercyLeft = 1;
-  let hideCount = 0;
-  let fightCount = 0;
-  let deathCount = 0;
-  let examineMemory = {};
-  let awayTime = 0;
-  let lastGuideStage = -1;
-  let hideStreak = 0;
-  let dangerHalfAnnounced = false;
-  let entityTimerStart = 0;
+  let hallStretch = 0, mercyLeft = 1, hideCount = 0, fightCount = 0, deathCount = 0;
+  let examineMemory = {}, awayTime = 0, lastGuideStage = -1, hideStreak = 0;
+  let tapesPlayed = {};
   let entityWindowMs = 9000;
 
   const logEl = document.getElementById('log');
@@ -363,165 +407,30 @@
   const cmd = document.getElementById('cmd');
   const unlockBtn = document.getElementById('audio-unlock');
 
-  let audioCtx = null, osc = null, gain = null, lfo = null, noise = null, noiseGain = null;
-  let danger = false, dangerTimer = null, entityTimer = null, musicStarted = false;
+  let audioCtx, osc, gain, lfo, noise, noiseGain, musicStarted = false;
+  let danger = false, dangerTimer, entityTimer, dangerHalfAnnounced = false;
 
   function say(t, cls) {
     const d = document.createElement('div');
     if (cls) d.className = cls;
     d.textContent = t;
     logEl.appendChild(d);
-    while (logEl.children.length > 50) logEl.removeChild(logEl.firstChild);
+    while (logEl.children.length > 60) logEl.removeChild(logEl.firstChild);
     logEl.scrollTop = logEl.scrollHeight;
+  }
+  function sayTape(lines) {
+    lines.forEach((line, i) => {
+      setTimeout(() => say(line, 'tape'), i * 700);
+    });
   }
   function addScore(n) { score += n; scoreEl.textContent = String(score); }
   function has(i) { return inv.includes(i); }
+  function resetDwell() {}
 
-  function ensureAudio() {
-    try {
-      if (!audioCtx) {
-        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        gain = audioCtx.createGain();
-        gain.gain.value = 0.05;
-        gain.connect(audioCtx.destination);
-
-        // soft noise bed (static)
-        const bufSize = audioCtx.sampleRate * 2;
-        const buf = audioCtx.createBuffer(1, bufSize, audioCtx.sampleRate);
-        const data = buf.getChannelData(0);
-        for (let i = 0; i < bufSize; i++) data[i] = (Math.random() * 2 - 1) * 0.15;
-        noise = audioCtx.createBufferSource();
-        noise.buffer = buf;
-        noise.loop = true;
-        noiseGain = audioCtx.createGain();
-        noiseGain.gain.value = 0.02;
-        noise.connect(noiseGain);
-        noiseGain.connect(gain);
-        noise.start();
-
-        osc = audioCtx.createOscillator();
-        osc.type = 'square';
-        osc.frequency.value = 110;
-        lfo = audioCtx.createOscillator();
-        lfo.type = 'square';
-        lfo.frequency.value = 2.2;
-        const lfoGain = audioCtx.createGain();
-        lfoGain.gain.value = 5;
-        lfo.connect(lfoGain);
-        lfoGain.connect(osc.frequency);
-        osc.connect(gain);
-        osc.start();
-        lfo.start();
-        musicStarted = true;
-      }
-      if (audioCtx.state === 'suspended') {
-        audioCtx.resume();
-      }
-      unlockBtn.classList.remove('show');
-      unlockBtn.textContent = 'SOUND ON';
-      return true;
-    } catch (e) {
-      say('Audio blocked by the device. Check silent switch / site permissions.', 'bad');
-      return false;
-    }
-  }
-
-  function setMusicPattern(mode) {
-    if (!osc || !audioCtx) return;
-    const t = audioCtx.currentTime;
-    if (mode === 'normal') {
-      osc.type = 'square';
-      osc.frequency.setValueAtTime(110, t);
-      lfo.frequency.setValueAtTime(2.2, t);
-      if (gain) gain.gain.setValueAtTime(0.05, t);
-      if (noiseGain) noiseGain.gain.setValueAtTime(0.02, t);
-    } else if (mode === 'danger') {
-      osc.type = 'sawtooth';
-      osc.frequency.setValueAtTime(176, t);
-      lfo.frequency.setValueAtTime(8, t);
-      if (gain) gain.gain.setValueAtTime(0.07, t);
-      if (noiseGain) noiseGain.gain.setValueAtTime(0.04, t);
-    } else if (mode === 'death') {
-      osc.frequency.setValueAtTime(48, t);
-      lfo.frequency.setValueAtTime(1, t);
-      if (gain) gain.gain.setValueAtTime(0.09, t);
-    }
-  }
-
-  function startDanger() {
-    if (danger || dead || ended) return;
-    if (!musicStarted) return;
-    danger = true;
-    setMusicPattern('danger'); setFxMode('danger'); if (viewEl) viewEl.classList.add('danger-roll');
-    document.getElementById('danger-bar').classList.add('on');
-    say('The tune warps. Something uses the doorway.', 'bad');
-    say('FIGHT · FLEE · HIDE', 'sys');
-    clearTimeout(entityTimer);
-    dangerHalfAnnounced = false;
-    entityTimerStart = Date.now();
-    entityTimer = setTimeout(() => {
-      if (danger) playDeathFMV('The entity enters while you hesitate.');
-    }, entityWindowMs);
-    setTimeout(() => {
-      if (danger && !dangerHalfAnnounced) {
-        dangerHalfAnnounced = true;
-        say('It is at the frame. Decide.', 'bad');
-      }
-    }, Math.floor(entityWindowMs / 2));
-  }
-
-  function endDanger(msg) {
-    danger = false;
-    clearTimeout(entityTimer);
-    setMusicPattern('normal'); setFxMode('normal'); if (viewEl) viewEl.classList.remove('danger-roll');
-    document.getElementById('danger-bar').classList.remove('on');
-    if (msg) say(msg, 'ok');
-  }
-
-  
-  // --- Framework unease (no art required) ---
-  let dwell = 0;
-  let attention = 0;
-  setInterval(function() {
-    if (dead || ended) return;
-    dwell++;
-    if (dwell === 25 && roomId === 'tv') {
-      say('The static leans toward you. Not louder — closer.', 'sys');
-    }
-    if (dwell === 40) {
-      say('You have been in this house long enough to be counted.', 'sys');
-      attention++;
-    }
-    if (dwell > 0 && dwell % 55 === 0 && !danger) {
-      const lines = [
-        'Something adjusts a picture that is not on the wall.',
-        'A laugh track without a joke, under the floor.',
-        'The glow refreshes as if someone changed the channel to you.',
-        'Your name is not spoken. The pause where it would fit is.',
-        'Carpet fibers remember a weight that is not yours yet.'
-      ];
-      say(lines[Math.floor(Math.random()*lines.length)], 'sys');
-      attention++;
-      if (attention >= 3 && !danger && musicStarted) {
-        say('The house has paid too much attention.', 'bad');
-        startDanger();
-      }
-    }
-  }, 1000);
-
-  function resetDwell() { dwell = 0; }
-
-  function questStage() {
-    if (flags.named && flags.marked && flags.seen) return 3;
-    if (flags.marked && flags.seen) return 2;
-    if (flags.seen) return 1;
-    return 0;
-  }
-  
   function saveStatus() {
     try {
       localStorage.setItem('utg_save', JSON.stringify({
-        flags, inv, hideCount, fightCount, deathCount, examineMemory, score
+        flags, inv, hideCount, fightCount, deathCount, examineMemory, score, tapesPlayed
       }));
     } catch (e) {}
   }
@@ -536,139 +445,236 @@
       if (typeof s.fightCount === 'number') fightCount = s.fightCount;
       if (typeof s.deathCount === 'number') deathCount = s.deathCount;
       if (s.examineMemory) examineMemory = s.examineMemory;
+      if (s.tapesPlayed) tapesPlayed = s.tapesPlayed;
       if (typeof s.score === 'number') { score = s.score; scoreEl.textContent = String(score); }
     } catch (e) {}
   }
 
+  function questStage() {
+    if (flags.named && flags.marked && flags.seen) return 3;
+    if (flags.marked && flags.seen) return 2;
+    if (flags.seen) return 1;
+    return 0;
+  }
   function tvGuide(force) {
     const stage = questStage();
     const lines = [
-      [
-        'Static clears for a second: YOU MUST BE SEEN.',
-        'Find the glass that writes first. Look until it notices you.',
-        'You are only safe under the glow. Do not stay away too long.'
-      ],
-      [
-        'The channel knows you were seen. Now you must be MARKED.',
-        'Take a letter from fog — or wear a wrong label. Let the house file you.',
-        'Only the glow is kind. Come back before the house finishes counting.'
-      ],
-      [
-        'Seen. Marked. The last step is to be NAMED.',
-        'Speak at the mirror. Give it something it can keep.',
-        'Do not linger in the corridors. The glow is the only mercy.'
-      ],
-      [
-        'The static thins when it wants to. You did what the channel asked.',
-        'If the carpet returns, it is only for now.',
-        'You can stay under the glow. The house will not argue.'
-      ]
+      ['Static: YOU MUST BE SEEN.', 'Find the glass that writes first.', 'Only safe under the glow. Bring tapes here to play them.'],
+      ['You were seen. Be MARKED.', 'Fog letter or wrong label.', 'Tapes tell the house rules. Play them on the set.'],
+      ['Seen. Marked. Be NAMED at the mirror.', 'Do not stay away too long.', 'The VCR will take what you found.'],
+      ['The channel is satisfied — for now.', 'Stay under the glow if you wish.', 'Replay tapes: play tape']
     ];
     const pack = lines[stage] || lines[0];
     if (force || stage !== lastGuideStage) {
       lastGuideStage = stage;
-      pack.forEach(line => say(line, 'sys'));
+      pack.forEach(l => say(l, 'sys'));
     } else {
       say(pack[Math.floor(Math.random() * pack.length)], 'sys');
-      say('You are only safe under the glow.', 'sys');
     }
   }
-  // Stray-from-glow pressure
-  setInterval(function() {
-    if (dead || ended) return;
-    if (roomId === 'tv') {
-      awayTime = 0;
-      return;
-    }
-    awayTime++;
-    if (awayTime === 28) {
-      say('The glow feels far. The TV would tell you to come back.', 'sys');
-    }
-    if (awayTime === 45) {
-      say('You have stayed away too long. The house notices the empty carpet under the set.', 'bad');
-    }
-    if (awayTime >= 55 && !danger && musicStarted) {
-      say('Signal loss. Something fills the space you left under the glow.', 'bad');
-      awayTime = 20;
-      startDanger();
-    }
-  }, 1000);
 
+  function ensureAudio() {
+    try {
+      if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        gain = audioCtx.createGain();
+        gain.gain.value = 0.05;
+        gain.connect(audioCtx.destination);
+        const bufSize = audioCtx.sampleRate * 2;
+        const buf = audioCtx.createBuffer(1, bufSize, audioCtx.sampleRate);
+        const data = buf.getChannelData(0);
+        for (let i = 0; i < bufSize; i++) data[i] = (Math.random() * 2 - 1) * 0.15;
+        noise = audioCtx.createBufferSource();
+        noise.buffer = buf; noise.loop = true;
+        noiseGain = audioCtx.createGain(); noiseGain.gain.value = 0.02;
+        noise.connect(noiseGain); noiseGain.connect(gain); noise.start();
+        osc = audioCtx.createOscillator(); osc.type = 'square'; osc.frequency.value = 110;
+        lfo = audioCtx.createOscillator(); lfo.type = 'square'; lfo.frequency.value = 2.2;
+        const lfoGain = audioCtx.createGain(); lfoGain.gain.value = 5;
+        lfo.connect(lfoGain); lfoGain.connect(osc.frequency);
+        osc.connect(gain); osc.start(); lfo.start();
+        musicStarted = true;
+      }
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+      unlockBtn.classList.remove('show');
+      return true;
+    } catch (e) {
+      say('Audio blocked. Check silent switch.', 'bad');
+      return false;
+    }
+  }
+  function setMusicPattern(mode) {
+    if (!osc || !audioCtx) return;
+    const tm = audioCtx.currentTime;
+    if (mode === 'normal') {
+      osc.type = 'square'; osc.frequency.setValueAtTime(110, tm); lfo.frequency.setValueAtTime(2.2, tm);
+      if (gain) gain.gain.setValueAtTime(0.05, tm);
+    } else if (mode === 'danger') {
+      osc.type = 'sawtooth'; osc.frequency.setValueAtTime(176, tm); lfo.frequency.setValueAtTime(8, tm);
+      if (gain) gain.gain.setValueAtTime(0.07, tm);
+    } else if (mode === 'death') {
+      osc.frequency.setValueAtTime(48, tm); lfo.frequency.setValueAtTime(1, tm);
+    }
+  }
+  function setFxMode(m) { fxMode = m; if (m === 'death') fxDeathT = 0; }
 
+  function startDanger() {
+    if (danger || dead || ended || !musicStarted) return;
+    danger = true; setMusicPattern('danger'); setFxMode('danger');
+    if (viewEl) viewEl.classList.add('danger-roll');
+    document.getElementById('danger-bar').classList.add('on');
+    say('The tune warps. Something uses the doorway.', 'bad');
+    say('FIGHT · FLEE · HIDE — or reach the glow.', 'sys');
+    clearTimeout(entityTimer);
+    dangerHalfAnnounced = false;
+    entityTimer = setTimeout(() => {
+      if (danger) playDeathFMV('The entity enters while you hesitate.');
+    }, entityWindowMs);
+    setTimeout(() => {
+      if (danger && !dangerHalfAnnounced) {
+        dangerHalfAnnounced = true;
+        say('It is at the frame. Decide.', 'bad');
+      }
+    }, Math.floor(entityWindowMs / 2));
+  }
+  function endDanger(msg) {
+    danger = false; clearTimeout(entityTimer);
+    setMusicPattern('normal'); setFxMode('normal');
+    if (viewEl) viewEl.classList.remove('danger-roll');
+    document.getElementById('danger-bar').classList.remove('on');
+    if (msg) say(msg, 'ok');
+  }
   function scheduleDanger() {
     clearTimeout(dangerTimer);
-    dangerTimer = setTimeout(() => {
-      startDanger();
-      scheduleDanger();
-    }, 16000 + Math.random() * 22000);
+    dangerTimer = setTimeout(() => { startDanger(); scheduleDanger(); }, 18000 + Math.random() * 22000);
   }
 
   function playDeathFMV(reason) {
-    danger = false;
-    clearTimeout(entityTimer);
+    danger = false; clearTimeout(entityTimer);
     document.getElementById('danger-bar').classList.remove('on');
-    setMusicPattern('death'); setFxMode('death'); if (viewEl) viewEl.classList.remove('danger-roll');
+    setMusicPattern('death'); setFxMode('death');
+    if (viewEl) viewEl.classList.remove('danger-roll');
     const fmv = document.getElementById('fmv');
     fmv.querySelector('.title').textContent = 'DEATH · 5 SECONDS';
-    fmv.querySelector('.art').textContent =
-`  ╭──────────╮
-  │ ▓░▓░▓▓░▓ │
-  │  STATIC  │
-  ╰──────────╯
-   back to the glow`;
-    fmv.querySelector('.line').textContent = reason + ' The reel always ends at the TV.';
+    fmv.querySelector('.art').textContent = '  ╭──────────╮\n  │ ▓░ STATIC │\n  ╰──────────╯\n  back to the glow';
+    fmv.querySelector('.line').textContent = reason + ' Status is saved.';
     fmv.classList.add('show');
     dead = true;
     deathCount++;
-    saveStatus();
     examineMemory.remote = 'The remote remembers your thumb from a previous glow.';
     examineMemory.sock = 'The sock is warm with someone else\'s wait.';
     examineMemory.letter = 'The letter already tried to be your name once.';
+    saveStatus();
     setTimeout(() => {
       fmv.classList.remove('show');
-      setMusicPattern('normal'); setFxMode('normal'); if (viewEl) viewEl.classList.remove('danger-roll');
-      // Persist status after death: flags, inventory, quest memory, ending stats
-      dead = false;
-      hp = 3;
-      hallStretch = 0;
-      mercyLeft = 1;
-      hideStreak = 0;
-      awayTime = 0;
-      danger = false;
-      // inv, flags, examineMemory, hideCount, fightCount, deathCount, lastGuideStage kept
+      setMusicPattern('normal'); setFxMode('normal');
+      dead = false; hp = 3; hallStretch = 0; mercyLeft = 1; hideStreak = 0; awayTime = 0; danger = false;
       enter('tv');
       say('You are under the glow again. Static paints your hands.', 'sys');
       say('The house did not forget what you already did.', 'sys');
-      const parts = [];
-      if (flags.seen) parts.push('seen');
-      if (flags.marked) parts.push('marked');
-      if (flags.named) parts.push('named');
       if (inv.length) say('Still carrying: ' + inv.join(', ') + '.', 'ok');
-      if (parts.length) say('Still ' + parts.join(', ') + '.', 'ok');
-      else say('Nothing of you is filed yet — only the glow remains.', 'sys');
+      const _p = [];
+      if (flags.seen) _p.push('seen');
+      if (flags.marked) _p.push('marked');
+      if (flags.named) _p.push('named');
+      if (_p.length) say('Still ' + _p.join(', ') + '.', 'ok');
     }, 5000);
   }
-
   function die(msg) { playDeathFMV(msg); }
+
+  // FX
+  const fxCanvas = document.getElementById('fx-canvas');
+  const fxCtx = fxCanvas.getContext('2d');
+  let fxOn = localStorage.getItem('utg_fx') !== '0';
+  let fxMode = 'normal', fxDeathT = 0, asciiFlicker = 0;
+  function resizeFx() {
+    const r = viewEl.getBoundingClientRect();
+    fxCanvas.width = Math.max(160, Math.floor(r.width));
+    fxCanvas.height = Math.max(100, Math.floor(r.height));
+  }
+  function drawFx() {
+    if (!fxOn) return;
+    const w = fxCanvas.width, h = fxCanvas.height;
+    fxCtx.clearRect(0, 0, w, h);
+    if (fxMode === 'death') {
+      fxDeathT++;
+      fxCtx.fillStyle = '#000'; fxCtx.fillRect(0,0,w,h);
+      fxCtx.fillStyle = (fxDeathT % 8) < 2 ? 'rgba(180,40,60,0.35)' : 'rgba(20,40,80,0.55)';
+      fxCtx.fillRect(0,0,w,h);
+      return;
+    }
+    const dangerM = fxMode === 'danger', tv = roomId === 'tv';
+    const img = fxCtx.createImageData(w, h);
+    const d = img.data;
+    for (let i = 0; i < d.length; i += 4) {
+      const n = Math.random();
+      let v = n * (tv ? 60 : 26); if (dangerM) v = n * 95;
+      d[i] = dangerM ? v : (tv ? v * 0.75 : v * 0.35);
+      d[i+1] = dangerM ? v * 0.35 : (tv ? v * 0.9 : v * 0.35);
+      d[i+2] = dangerM ? v * 0.35 : (tv ? v + 24 : v * 0.45);
+      d[i+3] = dangerM ? 55 : (tv ? 42 : 20);
+    }
+    fxCtx.putImageData(img, 0, 0);
+    if (tv || dangerM) {
+      fxCtx.globalCompositeOperation = 'screen';
+      fxCtx.fillStyle = 'rgba(255,0,40,0.03)'; fxCtx.fillRect(-1,0,w,h);
+      fxCtx.fillStyle = 'rgba(40,120,255,0.03)'; fxCtx.fillRect(1,0,w,h);
+      fxCtx.globalCompositeOperation = 'source-over';
+    }
+    fxCtx.fillStyle = 'rgba(0,0,0,0.18)';
+    for (let y = 0; y < h; y += 3) fxCtx.fillRect(0, y, w, 1.2);
+    if (tv) {
+      const g = fxCtx.createRadialGradient(w/2, h*0.35, 8, w/2, h*0.4, w*0.5);
+      g.addColorStop(0, 'rgba(140,190,255,0.16)');
+      g.addColorStop(1, 'rgba(0,0,0,0)');
+      fxCtx.fillStyle = g; fxCtx.fillRect(0,0,w,h);
+    }
+  }
+  function fxLoop() {
+    drawFx();
+    asciiFlicker++;
+    if (roomId === 'tv' && artEl && asciiFlicker % 8 === 0) artEl.style.opacity = (0.45 + Math.random() * 0.35).toFixed(2);
+    else if (artEl && roomId !== 'tv') artEl.style.opacity = '1';
+    requestAnimationFrame(fxLoop);
+  }
+  document.getElementById('fx-toggle').onclick = (e) => {
+    e.stopPropagation();
+    fxOn = !fxOn;
+    localStorage.setItem('utg_fx', fxOn ? '1' : '0');
+    viewEl.classList.toggle('fx-off', !fxOn);
+    document.getElementById('fx-toggle').textContent = fxOn ? 'FX ON' : 'FX OFF';
+  };
+  viewEl.classList.toggle('fx-off', !fxOn);
+  window.addEventListener('resize', resizeFx);
+  setTimeout(resizeFx, 50);
+  requestAnimationFrame(fxLoop);
+
+  setInterval(() => {
+    if (dead || ended) return;
+    if (roomId === 'tv') { awayTime = 0; return; }
+    awayTime++;
+    if (awayTime === 28) say('The glow feels far. Come back.', 'sys');
+    if (awayTime === 45) say('You have stayed away too long.', 'bad');
+    if (awayTime >= 55 && !danger && musicStarted) {
+      say('Signal loss.', 'bad'); awayTime = 20; startDanger();
+    }
+  }, 1000);
 
   function render() {
     const r = ROOMS[roomId];
     labelEl.textContent = r.name;
-    artEl.textContent = r.art;
-    const artUrl = ART[roomId];
-    if (artUrl) {
-      backdrop.style.backgroundImage = 'url(' + artUrl + ')';
-      viewEl.classList.add('has-art');
-    } else {
-      backdrop.style.backgroundImage = 'none';
-      backdrop.style.background = r.bg;
-      viewEl.classList.remove('has-art');
+    // Show tape marker in ASCII if tape still here
+    let art = r.art;
+    const tapeHere = Object.values(TAPES).find(tp => tp.room === roomId && !has(tp.id) && !tapesPlayed[tp.id]);
+    if (tapeHere && !has(tapeHere.id)) {
+      art = art + '\n  [cassette]';
     }
+    artEl.textContent = art;
+    backdrop.style.background = r.bg;
     viewEl.classList.toggle('tv-room', roomId === 'tv');
     invEl.textContent = 'Carrying: ' + (inv.length ? inv.join(', ') : 'nothing');
-    playerEl.style.left = px + '%';
-    playerEl.style.top = py + '%';
-    document.getElementById('founder').textContent = isFounder ? 'FOUNDER RELEASE · pay waived · playtest' : '';
+    playerEl.style.left = px + '%'; playerEl.style.top = py + '%';
+    document.getElementById('founder').textContent = isFounder ? 'FOUNDER · pay waived · v0.14' : '';
     ['n','s','e','w'].forEach(d => {
       document.getElementById('hint-' + d).textContent = r.exits[d] ? d.toUpperCase() : '';
     });
@@ -681,43 +687,32 @@
     else if (via === 'n') { px = 50; py = 80; }
     else if (via === 's') { px = 50; py = 26; }
     else { px = 50; py = 72; }
-    say('— ' + ROOMS[id].name + ' —', 'sys'); if (typeof resizeFx === 'function') resizeFx();
+    say('— ' + ROOMS[id].name + ' —', 'sys');
+    resizeFx();
     if (id === 'tv') {
       awayTime = 0;
-      if (danger) {
-        endDanger('It will not follow under the glow. The signal locks it out.');
-        addScore(6);
-      }
-      say('The glow holds. For a moment the noise is almost language.', 'sys');
+      if (danger) { endDanger('It will not follow under the glow.'); addScore(6); }
+      say('The glow holds.', 'sys');
     }
-    resetDwell();
     render();
   }
 
   function tryExit(dir) {
-    if (dir === 'd' || dir === 'down') dir = 'd';
     const r = ROOMS[roomId];
     let next = r.exits[dir];
-    if (!next && (dir === 'down' || dir === 'd')) next = r.exits.d;
-    if (!next && (dir === 'up' || dir === 'u')) next = r.exits.u || r.exits.n;
-    if (!next) { say('Only wall, and the idea of wall.'); return; }
-    // Non-Euclidean: hall east stretches once
-    if (roomId === 'hall' && dir === 'e' && next === 'mirror') {
-      if (hallStretch < 1) {
-        hallStretch++;
-        say('You walk east. The hall declines to become another room. You are still in the middle.', 'sys');
-        resetDwell();
-        render();
-        return;
-      }
+    if (!next && (dir === 'd' || dir === 'down')) next = r.exits.d;
+    if (!next && (dir === 'u' || dir === 'up')) next = r.exits.u || r.exits.n;
+    if (!next) { say('Only wall.'); return; }
+    if (roomId === 'hall' && dir === 'e' && next === 'mirror' && hallStretch < 1) {
+      hallStretch++;
+      say('You walk east. Still the middle of the hall.', 'sys');
+      render(); return;
     }
     if (next === 'yard' && roomId === 'hall' && !flags.marked) {
-      say('The yard door will not admit you yet. Something unfinished clings.', 'sys');
-      return;
+      say('Yard door sticks until you are marked.', 'sys'); return;
     }
     if (next === 'basement' && roomId === 'hall' && !flags.seen) {
-      say('The dark stair refuses until something has seen you.', 'sys');
-      return;
+      say('Stairs refuse until you have been seen.', 'sys'); return;
     }
     if (roomId === 'hall' && dir === 'e') hallStretch = 0;
     enter(next, dir);
@@ -737,169 +732,170 @@
     if (dir === 's' && py >= 82) tryExit('s');
   }
 
-  function gate() {
-    if (unlocked || isFounder) return false;
-    if (moves >= 6) {
-      say('A price is offered from outside the frame. One-time. No ads.', 'sys');
-      return true;
+  function playTapeFromInv(which) {
+    if (roomId !== 'tv') {
+      say('The tape needs the VCR under the set. Go under the glow.');
+      return;
     }
-    return false;
+    let tape = null;
+    if (which) {
+      tape = TAPES[which] || Object.values(TAPES).find(tp => tp.id === which || tp.title.toLowerCase().includes(which));
+    }
+    if (!tape) {
+      tape = Object.values(TAPES).find(tp => has(tp.id));
+    }
+    if (!tape || !has(tape.id)) {
+      say('No tape to play. Find cassettes in the house.');
+      return;
+    }
+    say('— INSERT ' + tape.title + ' —', 'sys');
+    sayTape(tape.play);
+    tapesPlayed[tape.id] = true;
+    inv = inv.filter(x => x !== tape.id);
+    addScore(15);
+    saveStatus();
+    render();
   }
 
   function handle(raw) {
     if (dead) return;
     ensureAudio();
-    if (gate()) return;
+    if (!unlocked && !isFounder && moves >= 8) {
+      say('One-time unlock path for public builds.', 'sys'); return;
+    }
     let s = (raw || '').trim().toLowerCase().replace(/\s+/g, ' ');
     if (!s) return;
     moves++;
     say('> ' + s, 'you');
 
     if (s === 'fight' || s === 'flee' || s === 'hide' || s === 'run') {
-      if (!danger) say('Nothing to fight or flee. The glow is steady.');
+      if (!danger) say('Nothing at the door yet.');
       else if (s === 'hide') {
-        hideCount++;
-        hideStreak++;
+        hideCount++; hideStreak++;
         if (mercyLeft > 0) {
-          mercyLeft--;
-          hideStreak = 0;
-          endDanger('You fold into the furniture. The house allows it — once.');
-          addScore(8);
+          mercyLeft--; hideStreak = 0;
+          endDanger('The house allows one true hide.'); addScore(8);
         } else {
-          let hideChance = 0.5;
-          if (hideStreak >= 3) hideChance = 0.2;
-          else if (hideStreak >= 2) hideChance = 0.35;
-          if (Math.random() < hideChance) {
-            endDanger(hideStreak >= 2 ? 'You hide. It almost checked this place first.' : 'You hide. Barely. Something sniffs the gap.');
-            addScore(4);
-          } else {
-            playDeathFMV(hideStreak >= 2 ? 'It learned where you hide.' : 'The furniture was already full.');
-          }
+          const chance = hideStreak >= 3 ? 0.2 : hideStreak >= 2 ? 0.35 : 0.5;
+          if (Math.random() < chance) endDanger('You hide. Barely.');
+          else playDeathFMV(hideStreak >= 2 ? 'It learned where you hide.' : 'Furniture full.');
         }
-      }
-      else if (s === 'flee' || s === 'run') {
+      } else if (s === 'flee' || s === 'run') {
         hideStreak = 0;
-        // Prefer path toward TV if possible
         const exits = ROOMS[roomId].exits || {};
         let toward = null;
-        for (const [d, dest] of Object.entries(exits)) {
-          if (dest === 'tv') toward = d;
-        }
-        if (!toward && exits.w && roomId === 'hall') toward = 'w';
-        if (!toward && exits.s && roomId === 'bedroom') toward = 's';
-        if (!toward && exits.u && roomId === 'basement') toward = 'u';
-        endDanger(toward ? 'You run for the glow. The entity does not like that light.' : 'You take a door without choosing it.');
+        for (const [d, dest] of Object.entries(exits)) if (dest === 'tv') toward = d;
+        if (!toward && roomId === 'hall') toward = 'w';
+        if (!toward && roomId === 'bedroom') toward = 's';
+        endDanger(toward ? 'You run for the glow.' : 'You bolt.');
         if (toward) tryExit(toward);
-        else {
-          const dirs = Object.keys(exits);
-          tryExit(dirs[Math.floor(Math.random() * dirs.length)] || 'e');
-        }
-        addScore(toward ? 8 : 5);
+        else tryExit(Object.keys(exits)[0] || 'e');
       } else if (s === 'fight') {
-        fightCount++; hideStreak = 0; if (Math.random() < 0.35) { endDanger('You swing. It is surprised.'); addScore(12); }
-        else playDeathFMV('You fight. The entity is not fair.');
+        fightCount++; hideStreak = 0;
+        if (Math.random() < 0.35) endDanger('You swing. It is surprised.');
+        else playDeathFMV('Fight fails.');
       }
     } else if (s === 'help') {
-      say('Move N/W/S/E. Type: look, listen, map, take, use, talk, examine, inventory, open, read, hide, fight, flee, status. When music shifts: fight, flee, or hide. Deaths return you to the TV glow. Scare without pictures. The TV is your guide. You are only safe under the glow. Hall may stretch. One true hide per run. Deaths return you to the glow but keep your status.');
+      say('Move N/W/S/E. look, listen, take, use, talk, examine, inventory, play tape, map, status, fight/flee/hide. TV is the guide. Tapes play only under the glow. Status saves after death.');
     } else if (s === 'map') {
-      say('TV is the guide — look/listen/talk under the glow for objectives. TV glow —east→ Hall —east→ Mirror; Hall north→ Kitchen; Hall south→ Yard (marked); Hall down→ Basement (seen); TV north→ Bedroom.');
+      say('TV(guide,VCR) —n→ Bedroom · —e→ Hall —e→ Mirror; Hall —n→ Kitchen · —s→ Yard · —down→ Basement. Tapes: bedroom, mirror, kitchen, yard, basement.');
     } else if (s === 'status') {
-      say('Nerve ' + hp + ' · score ' + score + ' · seen/marked/named ' + [flags.seen,flags.marked,flags.named].map(x=>x?'yes':'no').join('/'));
+      say('Nerve ' + hp + ' · score ' + score + ' · ' + [flags.seen&&'seen',flags.marked&&'marked',flags.named&&'named'].filter(Boolean).join(', '));
+      const tp = Object.keys(tapesPlayed).length;
+      say('Tapes played: ' + tp + '/5');
     } else if (s === 'inventory' || s === 'i' || s === 'inv') {
       say('Carrying: ' + (inv.length ? inv.join(', ') : 'nothing'));
+    } else if (s.startsWith('play')) {
+      const which = s.replace(/^play\s*(tape\s*)?/, '').trim();
+      playTapeFromInv(which ? 'tape-' + which.replace(/^tape-/, '') : null);
+      if (which && !which.startsWith('tape') && has('tape-' + which[0])) playTapeFromInv('tape-' + which[0]);
+      // simpler: playTapeFromInv handles
     } else if (s === 'listen') {
       const L = {
-        tv: 'White noise with a rhythm that is almost a word. Stand here. It will instruct.',
-        hall: 'Static from the west. A footstep that does not finish.',
-        mirror: 'Water deciding whether to drip.',
-        kitchen: 'Fridge song under the TV song.',
-        yard: 'Grass. Something practicing friendly.',
-        basement: 'A delayed answer to the static.',
-        bedroom: 'Closet breath. Mattress-shaped silence.'
+        tv: 'Static almost forms words. Look or talk for instructions. VCR waits.',
+        hall: 'Static from the west.',
+        mirror: 'Water drip. Fog.',
+        kitchen: 'Fridge song.',
+        yard: 'Grass and almost-a-name.',
+        basement: 'Delayed answer.',
+        bedroom: 'Closet breath.'
       };
-      say(L[roomId] || 'The house listens harder.');
+      say(L[roomId] || '…');
       if (roomId === 'tv') tvGuide(false);
     } else if (s === 'look' || s === 'l' || s === 'look around') {
       say(ROOMS[roomId].desc);
       if (roomId === 'mirror') { flags.seen = true; addScore(5); say('The glass notices you early.', 'ok'); }
-      if (roomId === 'tv') { say('The glow is the only permission the dark gives.'); tvGuide(true); }
+      if (roomId === 'tv') tvGuide(true);
+      const tape = Object.values(TAPES).find(tp => tp.room === roomId && !has(tp.id));
+      if (tape) say('A cassette rests where it should not.', 'sys');
     } else if (s === 'look back' || s === 'turn around') {
       if (roomId === 'hall') die('You look back. The hall grows through you.');
       else say('Only the suggestion of being followed.');
     } else if (/^(go|walk|move)\s+/.test(s) || ['north','south','east','west','n','s','e','w','up','down'].includes(s)) {
       let d = s.replace(/^(go|walk|move)\s+/, '');
-      if (d.startsWith('n') || d === 'up') tryExit(d === 'up' ? 'n' : 'n');
+      if (d.startsWith('n') || d === 'up') tryExit('n');
       else if (d.startsWith('s')) tryExit('s');
       else if (d.startsWith('e')) tryExit('e');
       else if (d.startsWith('w')) tryExit('w');
-      else if (d.startsWith('d')) {
-        if (roomId === 'hall') tryExit('d');
-        else say('No down from here.');
-      } else say('Which way?');
-    } else if (s.includes('basement') || s.includes('stair')) {
-      if (roomId === 'hall') tryExit('d');
-      else say('Find the hall first.');
+      else if (d.startsWith('d')) { if (roomId === 'hall') tryExit('d'); else say('No down.'); }
     } else if (s.startsWith('take') || s.startsWith('get')) {
-      if (roomId === 'tv' && !has('remote')) { inv.push('remote'); addScore(10); say('A remote with no batteries. It still feels warm.', 'ok'); say('In the static: a commercial for sleeping.', 'sys'); }
-      else if (roomId === 'bedroom' && !has('lost sock')) { inv.push('lost sock'); addScore(10); say('A sock under where the bed was. Still warm.', 'ok'); }
-      else if (roomId === 'kitchen' && !has('wrong label')) { inv.push('wrong label'); addScore(10); say('EAT ME / DO NOT. Both sides earnest.', 'ok'); }
-      else if (roomId === 'mirror' && !has('fog letter')) { inv.push('fog letter'); flags.marked = true; addScore(15); say('A letter from the fog sticks to your thumb.', 'ok'); }
-      else if (roomId === 'yard' && !has('collar tag')) { inv.push('collar tag'); addScore(10); say('A tag with the name scratched out.', 'ok'); }
-      else if (roomId === 'basement' && !has('wet key')) { inv.push('wet key'); addScore(12); say('A key that should not be wet this far inland.', 'ok'); }
-      else if (deathCount > 0 && Math.random() < 0.15) say('You already took that. (Did you?)', 'sys');
-      else say('Nothing else offers itself.');
-    } else if (s.startsWith('examine') || s.startsWith('look at') || s.startsWith('inspect')) {
-      const t = s.replace(/^(examine|look at|inspect)\s+/, '');
-      if (t.includes('remote') && has('remote')) {
-        if (examineMemory.remote) say(examineMemory.remote);
-        else say('Buttons worn smooth. Channel 03 is the only one that dents.');
+      const tape = Object.values(TAPES).find(tp => tp.room === roomId && !has(tp.id));
+      if (tape && (s.includes('tape') || s.includes('cassette') || s === 'take' || s === 'take all')) {
+        inv.push(tape.id); addScore(10);
+        say('You take ' + tape.title + '. Play it under the glow.', 'ok');
+        saveStatus(); render(); return;
       }
-      else if (t.includes('sock') && has('lost sock')) say(examineMemory.sock || 'Warmth without a foot.');
-      else if (t.includes('label') && has('wrong label')) say('Friendly font. Unfriendly options.');
-      else if ((t.includes('letter') || t.includes('fog')) && has('fog letter')) say(examineMemory.letter || 'Not a word yet. A demand for a mouth.');
-      else if (t.includes('tag') && has('collar tag')) say('Removed carefully. Love or fear.');
-      else if (t.includes('key') && has('wet key')) say('Fits a door you have not found — or one you already left.');
-      else if (t.includes('tv') || t.includes('static') || t.includes('glow')) say('The glow is a mouth that only knows static.');
-      else say('Nothing special — or everything is. The room examines you back.');
-    } else if (s.startsWith('use') || s.startsWith('give')) {
-      if (s.includes('remote') && has('remote') && roomId === 'tv') {
-        say('You click nothing. The static briefly forms a hallway, then forgets.', 'ok'); addScore(5);
-      } else if (s.includes('sock') && has('lost sock') && roomId === 'kitchen') {
-        say('The stove-eye accepts the sock and becomes only heat.', 'ok'); addScore(15);
-      } else if (s.includes('label') && has('wrong label')) {
-        flags.marked = true; say('You wear the label. Filed under maybe.', 'ok'); addScore(10);
-      } else if (s.includes('key') && has('wet key') && roomId === 'basement') {
-        say('The key turns a lock that is only air. Something below goes quiet.', 'ok'); addScore(15);
-      } else if (s.includes('tag') && has('collar tag') && roomId === 'yard') {
-        die('You try the tag on the shape. It remembers.');
-      } else say('The house declines — for now.');
+      if (roomId === 'tv' && !has('remote')) { inv.push('remote'); addScore(10); say('Remote without batteries. Warm.', 'ok'); }
+      else if (roomId === 'bedroom' && !has('lost sock')) { inv.push('lost sock'); addScore(10); say('Sock still warm.', 'ok'); }
+      else if (roomId === 'kitchen' && !has('wrong label')) { inv.push('wrong label'); addScore(10); say('EAT ME / DO NOT.', 'ok'); }
+      else if (roomId === 'mirror' && !has('fog letter')) { inv.push('fog letter'); flags.marked = true; addScore(15); say('Fog letter on your thumb.', 'ok'); }
+      else if (roomId === 'yard' && !has('collar tag')) { inv.push('collar tag'); addScore(10); say('Tag, name scratched out.', 'ok'); }
+      else if (roomId === 'basement' && !has('wet key')) { inv.push('wet key'); addScore(12); say('Wet key.', 'ok'); }
+      else if (deathCount > 0 && Math.random() < 0.12) say('You already took that. (Did you?)', 'sys');
+      else say('Nothing else offers itself.');
+      saveStatus();
+    } else if (s.startsWith('examine') || s.startsWith('look at') || s.startsWith('inspect')) {
+      const q = s.replace(/^(examine|look at|inspect)\s+/, '');
+      if (q.includes('tape') || q.includes('cassette')) {
+        const tps = inv.filter(i => i.startsWith('tape'));
+        if (tps.length) tps.forEach(id => say(TAPES[id].title + ' — play under the glow.'));
+        else say('No tape in hand. Look for [cassette] in rooms.');
+      } else if (q.includes('fridge') && roomId === 'kitchen') say('The fridge is a white upright coffin for leftovers and light.');
+      else if (q.includes('mirror') && roomId === 'mirror') say('A rectangle that arrives before you do.');
+      else if (q.includes('remote') && has('remote')) say(examineMemory.remote || 'Channel 03 dents.');
+      else if (q.includes('sock') && has('lost sock')) say(examineMemory.sock || 'Warmth without a foot.');
+      else if ((q.includes('letter') || q.includes('fog')) && has('fog letter')) say(examineMemory.letter || 'Demands a mouth.');
+      else if (q.includes('tv') || q.includes('vcr') || q.includes('glow')) say('The VCR is a mouth. Tapes are sentences.');
+      else say('The room examines you back.');
+    } else if (s.startsWith('use') || s.startsWith('give') || s.startsWith('insert')) {
+      if (s.includes('tape') || s.includes('cassette')) playTapeFromInv(null);
+      else if (s.includes('remote') && has('remote') && roomId === 'tv') { say('Click. Static almost becomes a hallway.', 'ok'); addScore(5); }
+      else if (s.includes('label') && has('wrong label')) { flags.marked = true; say('Filed under maybe.', 'ok'); addScore(10); }
+      else if (s.includes('sock') && has('lost sock') && roomId === 'kitchen') { say('Stove-eye accepts the sock.', 'ok'); addScore(15); }
+      else if (s.includes('key') && has('wet key') && roomId === 'basement') { say('Key turns air. Quiet below.', 'ok'); addScore(15); }
+      else if (s.includes('tag') && has('collar tag') && roomId === 'yard') die('The shape remembers.');
+      else say('Not now.');
+      saveStatus();
     } else if (s.startsWith('talk') || s.startsWith('say') || s.startsWith('ask') || s.startsWith('name') || s.startsWith('hello')) {
       if (roomId === 'mirror') {
         flags.named = true; flags.seen = true; addScore(20);
         say('You speak a name. The mirror owns it better.', 'ok');
       } else if (roomId === 'tv') {
-        say('You talk to the glow. It answers in snow — then in orders.');
+        say('The glow answers in snow, then in orders.');
         tvGuide(true);
-      } else if (roomId === 'basement') {
-        say('Your voice returns half a second late — as if from under water.');
       } else if (roomId === 'yard' && (s.includes('dog') || s.includes('here') || s.includes('hello'))) {
-        die('You call out. The shape is delighted.');
-      } else if (roomId === 'kitchen') {
-        say('Appliances listen harder than people.');
-      } else say('Your voice goes out and does not come home.');
+        die('The shape is delighted.');
+      } else say('Your voice does not come home.');
+      saveStatus();
     } else if (s === 'open') {
       if (roomId === 'tv') tryExit('e');
-      else if (roomId === 'bedroom') say('The closet opens a mouth of coats that are not yours.');
-      else if (roomId === 'kitchen') say('Fridge light: batteries and lunchboxes.');
-      else say('It opens enough to make a point.');
-    } else if (s === 'read') {
-      if (has('wrong label')) say('EAT ME. DO NOT.');
-      else if (has('collar tag')) say('A name carefully removed.');
-      else say('No text volunteers.');
+      else if (roomId === 'kitchen') say('Fridge opens a bar of light.');
+      else if (roomId === 'bedroom') say('Closet of coats that are not yours.');
+      else say('It opens enough.');
     } else {
       hp -= 1;
       say('That does not parse. Nerve ' + hp, 'bad');
-      if (hp <= 0) die('Fear takes a small, silly trophy.');
+      if (hp <= 0) die('Fear takes a small trophy.');
     }
 
     saveStatus();
@@ -907,180 +903,33 @@
       ended = true;
       say('You are seen, marked, and named.', 'ok');
       if (hideCount > fightCount && hideCount > 0) {
-        say('ENDING B — STILL GLOWING: You hid more than you faced. The static keeps a place for you.', 'ok');
-        say('You wake under the glow on purpose. The house does not argue.', 'ok');
+        say('ENDING B — STILL GLOWING.', 'ok');
       } else {
-        say('ENDING A — CARPET: The static thins. A living room with the lights on — for a frame.', 'ok');
-        say('Then only carpet. For now.', 'ok');
+        say('ENDING A — CARPET. Static thins. For now.', 'ok');
       }
-      addScore(50);
-      saveStatus();
+      addScore(50); saveStatus();
     }
     render();
   }
 
-  function bootAudio() {
-    if (ensureAudio()) {
-      setMusicPattern('normal'); setFxMode('normal'); if (viewEl) viewEl.classList.remove('danger-roll');
-      scheduleDanger();
-      say('The glow hums. Chip-static online.', 'ok');
-    }
-  }
-
-  unlockBtn.addEventListener('click', bootAudio);
   document.getElementById('go').onclick = () => { ensureAudio(); handle(cmd.value); cmd.value = ''; cmd.focus(); };
-  cmd.addEventListener('keydown', e => {
-    if (e.key === 'Enter') { ensureAudio(); handle(cmd.value); cmd.value = ''; }
-  });
+  cmd.addEventListener('keydown', e => { if (e.key === 'Enter') { ensureAudio(); handle(cmd.value); cmd.value = ''; } });
   document.querySelectorAll('.pad button[data-dir]').forEach(b => {
     b.addEventListener('click', () => { ensureAudio(); walk(b.getAttribute('data-dir')); });
   });
   window.addEventListener('keydown', e => {
     if (document.activeElement === cmd) return;
-    if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.key)) {
-      e.preventDefault();
-      ensureAudio();
-      if (e.key === 'ArrowUp') walk('n');
-      if (e.key === 'ArrowDown') walk('s');
-      if (e.key === 'ArrowLeft') walk('w');
-      if (e.key === 'ArrowRight') walk('e');
+    if (e.key.startsWith('Arrow')) {
+      e.preventDefault(); ensureAudio();
+      walk({ArrowUp:'n',ArrowDown:'s',ArrowLeft:'w',ArrowRight:'e'}[e.key]);
     }
   });
+  unlockBtn.addEventListener('click', () => { ensureAudio(); setMusicPattern('normal'); scheduleDanger(); say('Chip-static online.', 'ok'); });
+  document.body.addEventListener('touchstart', function once() { ensureAudio(); document.body.removeEventListener('touchstart', once); }, { passive: true });
 
-  // also try unlock on first pointer anywhere
-  document.body.addEventListener('touchstart', function once() {
-    ensureAudio();
-    document.body.removeEventListener('touchstart', once);
-  }, { passive: true });
-
-  
-  // --- In-engine FX (Phase A+B) ---
-  const fxCanvas = document.getElementById('fx-canvas');
-  const fxCtx = fxCanvas ? fxCanvas.getContext('2d') : null;
-  let fxOn = localStorage.getItem('utg_fx') !== '0';
-  let fxMode = 'normal'; // normal | danger | death
-  let fxDeathT = 0;
-  let asciiFlicker = 0;
-
-  function resizeFx() {
-    if (!fxCanvas || !viewEl) return;
-    const r = viewEl.getBoundingClientRect();
-    fxCanvas.width = Math.max(160, Math.floor(r.width));
-    fxCanvas.height = Math.max(100, Math.floor(r.height));
-  }
-  function setFxMode(m) { fxMode = m; if (m === 'death') fxDeathT = 0; }
-  function drawFx() {
-    if (!fxCtx || !fxCanvas || !fxOn) return;
-    const w = fxCanvas.width, h = fxCanvas.height;
-    fxCtx.clearRect(0, 0, w, h);
-    if (fxMode === 'death') {
-      fxDeathT++;
-      fxCtx.fillStyle = '#000';
-      fxCtx.fillRect(0, 0, w, h);
-      const flash = (fxDeathT % 8) < 2;
-      fxCtx.fillStyle = flash ? 'rgba(180,40,60,0.35)' : 'rgba(20,40,80,0.55)';
-      fxCtx.fillRect(0, 0, w, h);
-      fxCtx.fillStyle = 'rgba(255,255,255,0.07)';
-      for (let y = (fxDeathT * 4) % 10; y < h; y += 10) fxCtx.fillRect(0, y, w, 2);
-      fxCtx.strokeStyle = 'rgba(220,200,200,0.45)';
-      fxCtx.lineWidth = 2;
-      fxCtx.beginPath();
-      fxCtx.moveTo(w * 0.15, h * 0.25);
-      fxCtx.lineTo(w * 0.85, h * 0.75);
-      fxCtx.stroke();
-      // loss of sync bars
-      fxCtx.fillStyle = 'rgba(200,200,255,0.15)';
-      fxCtx.fillRect(0, (fxDeathT * 7) % h, w, 6);
-      return;
-    }
-    const danger = fxMode === 'danger';
-    const tv = roomId === 'tv';
-    // base noise (with slight RGB fringe on TV)
-    const img = fxCtx.createImageData(w, h);
-    const d = img.data;
-    for (let i = 0; i < d.length; i += 4) {
-      const n = Math.random();
-      let v = n * (tv ? 60 : 26);
-      if (danger) v = n * 95;
-      d[i]   = danger ? v : (tv ? v * 0.75 : v * 0.35);
-      d[i+1] = danger ? v * 0.35 : (tv ? v * 0.9 : v * 0.35);
-      d[i+2] = danger ? v * 0.35 : (tv ? v + 24 : v * 0.45);
-      d[i+3] = danger ? 55 : (tv ? 42 : 20);
-    }
-    fxCtx.putImageData(img, 0, 0);
-    // RGB fringe (TV / danger)
-    if (tv || danger) {
-      fxCtx.globalCompositeOperation = 'screen';
-      fxCtx.fillStyle = 'rgba(255,0,40,' + (danger ? '0.04' : '0.025') + ')';
-      fxCtx.fillRect(-1, 0, w, h);
-      fxCtx.fillStyle = 'rgba(40,120,255,' + (danger ? '0.05' : '0.03') + ')';
-      fxCtx.fillRect(1, 0, w, h);
-      fxCtx.globalCompositeOperation = 'source-over';
-    }
-    // denser scanlines
-    fxCtx.fillStyle = danger ? 'rgba(0,0,0,0.28)' : 'rgba(0,0,0,0.18)';
-    for (let y = 0; y < h; y += 3) fxCtx.fillRect(0, y, w, 1.2);
-    // interlaced dim
-    if ((asciiFlicker % 4) < 2) {
-      fxCtx.fillStyle = 'rgba(0,0,0,0.06)';
-      for (let y = 1; y < h; y += 6) fxCtx.fillRect(0, y, w, 2);
-    }
-    // phosphor hint (vertical RGB) TV only
-    if (tv) {
-      for (let x = 0; x < w; x += 3) {
-        fxCtx.fillStyle = 'rgba(255,60,60,0.03)';
-        fxCtx.fillRect(x, 0, 1, h);
-        fxCtx.fillStyle = 'rgba(60,255,80,0.025)';
-        fxCtx.fillRect(x + 1, 0, 1, h);
-        fxCtx.fillStyle = 'rgba(60,100,255,0.035)';
-        fxCtx.fillRect(x + 2, 0, 1, h);
-      }
-    }
-    // center bloom
-    if (tv) {
-      const g = fxCtx.createRadialGradient(w/2, h*0.35, 8, w/2, h*0.4, w*0.5);
-      g.addColorStop(0, 'rgba(140,190,255,0.16)');
-      g.addColorStop(0.5, 'rgba(60,100,180,0.05)');
-      g.addColorStop(1, 'rgba(0,0,0,0)');
-      fxCtx.fillStyle = g;
-      fxCtx.fillRect(0, 0, w, h);
-    }
-    // danger roll cue handled by CSS class
-  }
-  function fxLoop() {
-    drawFx();
-    // ASCII flicker on TV
-    asciiFlicker++;
-    if (roomId === 'tv' && artEl && asciiFlicker % 8 === 0) {
-      artEl.style.opacity = (0.4 + Math.random() * 0.35).toFixed(2);
-    } else if (artEl && roomId !== 'tv') {
-      artEl.style.opacity = '1';
-    }
-    requestAnimationFrame(fxLoop);
-  }
-  window.addEventListener('resize', resizeFx);
-  const fxToggle = document.getElementById('fx-toggle');
-  function applyFxToggle() {
-    if (!viewEl) return;
-    viewEl.classList.toggle('fx-off', !fxOn);
-    if (fxToggle) fxToggle.textContent = fxOn ? 'FX ON' : 'FX OFF';
-  }
-  if (fxToggle) {
-    fxToggle.onclick = (e) => {
-      e.stopPropagation();
-      fxOn = !fxOn;
-      localStorage.setItem('utg_fx', fxOn ? '1' : '0');
-      applyFxToggle();
-    };
-  }
-  applyFxToggle();
-  setTimeout(resizeFx, 50);
-  requestAnimationFrame(fxLoop);
-
-  say('Under the Glow v0.13 — status persists after death. The house does not forget.', 'sys');
   loadStatus();
-  if (isFounder) say('FOUNDER RELEASE — pay waived. Tap the blue sound bar if silent.', 'ok');
-  else say('Tap the sound bar, then type help.', 'sys');
+  say('Under the Glow v0.14 — tapes, denser ASCII sets, CRT. Look under the glow for guidance.', 'sys');
+  if (isFounder) say('FOUNDER RELEASE — pay waived.', 'ok');
   render();
   cmd.focus();
 })();
